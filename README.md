@@ -37,4 +37,9 @@ make
   Follow instructions on the following GIT repository:
   https://github.com/crigroup/optitrack
   
+  ## 2 Test Installation
+  
+  ### a. Connect to the Optitrack Network
+         Name: HDR-Network
+         Password: CMUHDR2015
   
