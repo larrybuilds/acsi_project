@@ -31,3 +31,10 @@ git submodule update
 ```
 make
 ```
+  # Setting up optitrack on Ubuntu 14.04
+
+  ## 1 Install Optitrack ROS package
+  Follow instructions on the following GIT repository:
+  https://github.com/crigroup/optitrack
+  
+  
