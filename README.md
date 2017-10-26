@@ -1,9 +1,22 @@
-# acsi_project
-Advanced Control System Integration class project repo
+# Advanced Control System Integration Class Project
 
-# Crazyflie firmware enviornment setup
+Codebase for Advanced Control Systems Integration final project - Ball-in-a-cup on a quadrotor.
 
-## 1 ARM Toolchain setup
+## Dependencies
+
+This codebase was developed on Ubuntu 14.04. Much should be portable to 16.04, but nothing is built to do so.
+
+Ubuntu 14.04 (Trusty Tahr)
+ROS Indigo
+Crazyflie 2.0
+Crazyflie Client (programming firmware)
+Optitrack System (motion capture system)
+
+## Crazyflie Firmware Setup
+
+### ARM Toolchain setup
+
+#### For Ubuntu 14.04:
 
 Download the GCC ARM toolchain needed to build the software, unpack and move into your home folder
 ```
@@ -18,28 +31,36 @@ echo -e "\nPATH=\$PATH:$HOME/bin/gcc-arm-none-eabi/bin" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-## 2 Download crazyflie firmware and initialize
+#### For Ubuntu 16.04
 
 ```
-git clone --recursive https://github.com/bitcraze/crazyflie-firmware.git
+sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
+sudo apt-get update
+sudo apt-get install libnewlib-arm-none-eabi
+```
+
+### Build the crazyflie firmware
+```
 cd crazyflie-firmware
-git submodule init
-git submodule update
-```
-
-## 3 Build the crazyflie firmware
-```
 make
 ```
-  # Setting up optitrack on Ubuntu 14.04
 
-  ## 1 Install Optitrack ROS package
-  Follow instructions on the following GIT repository:
-  https://github.com/crigroup/optitrack
-  
-  ## 2 Test Installation
-  
-  ### a. Connect to the Optitrack Network
-         Name: HDR-Network
-         Password: CMUHDR2015
-  
+## Optitrack System setup
+
+### Connect to and configure Optitrack system
+
+The optitrack system runs off a computer connected to the HDR-Network wifi. Connect your laptop to it using the following.
+```
+SSID: HDR-Netwwork
+PASS: CMUHDR2015
+```
+
+Once connected, run ```ifconfig``` to get the IP address that was assigned to your computer. Open the MOTIVE software on the Optitrack computer and navigate to ``` View -> Data Streaming```. In the panel that comes up, configure the IP address the Optitrack system is streaming data to to your ip, ```Advanced Network Options -> Multicast Interface```.
+
+### Add Crazyflie rigid body
+
+Using 5 retro-reflective balls, mounted by the 4 rotors and 1 center, select them all in the MOTIVE software and right-click and select ```Rigid Body -> Create from Selected Markers```. This will create the body that the system tracks and reports position and attitude of to ROS.
+
+### Reseting the Body-fixed Frame
+
+Select the the rigid body and navigate to ```View -> Rigid Body Properties```. In the panel that comes up, go to the ```Orientation``` ribbon. Here, you can align the body fixed frame of the crazyflie so that frame is presented correctly in ROS. Algin the x-axis of the crazyflie pointing positive away from the lab door and click ```Reset to Current Orientation``` button to zero the roll,pitch,yaw
