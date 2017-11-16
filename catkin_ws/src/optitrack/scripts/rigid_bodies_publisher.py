@@ -162,10 +162,11 @@ class RigidBodiesPublisher(object):
               tf_broadcaster.sendTransform(pos2, rot2, rospy.Time.now(), body_name, parent_frame)
 
               prevtime[body_id] = rospy.get_time()
-              
+
           for marker in packet.other_markers:
               upoint_msg.upoints.append(Point(*marker))
-
+          upoint_msg.header.stamp = rospy.Time.now()
+          
         pose_pub.publish(array_msg)
         point_pub.publish(upoint_msg)
 

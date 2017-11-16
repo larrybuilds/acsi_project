@@ -11,12 +11,13 @@
     **************************************************************************/
 
 #include "ros/ros.h"
-#include <gemoetry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <inttypes.h>
 
 int main(int argc, char **argv){
   ros::init(argc, argv, "trajectory_publisher");
@@ -25,18 +26,19 @@ int main(int argc, char **argv){
 
   // Variable definitions
   float amp, freq, x_off, y_off, z_off;
+  uint32_t sec, nsec;
 
   // Pull parameters from server
-  n_private.param<float>("amplitude", amp,   1);
-  n_private.param<float>("freqency",  freq,  1);
-  n_private.param<float>("x_offset",  x_off, 1);
-  n_private.param<float>("y_offset",  y_off, 1);
-  n_private.param<float>("z_offset",  z_off, 1);
+  n_private.param<float>("amplitude",  amp,   1);
+  n_private.param<float>("frequency",  freq,  1);
+  n_private.param<float>("x_offset",   x_off, 1);
+  n_private.param<float>("y_offset",   y_off, 1);
+  n_private.param<float>("z_offset",   z_off, 1);
 
   // Define waypoint publisher
-  ros::Publisher pose_pub = n.advertize<gemoetry_msgs::PoseStamped>("/goal", 100);
+  ros::Publisher pose_pub = n.advertise<geometry_msgs::PoseStamped>("/crazyflie/goal", 100);
   // Define current waypoint pose message
-  gemoetry_msgs::PoseStamped pose_msg;
+  geometry_msgs::PoseStamped pose_msg;
 
   // Initialize message for takeoff sequence
   pose_msg.pose.position.x = x_off;
@@ -49,23 +51,29 @@ int main(int argc, char **argv){
 
   ros::Time startTime;
   ros::Time t;
+  ros::Duration dt;
+
   startTime = ros::Time::now();
-  ros::Rate looprate(2);
+  ros::Rate looprate(5);
 
   // Set the copter to hover for 10s on start
-  while( (ros::Time::now() - startTime) <= ros::Duration(10) ) {
+  while( (ros::Time::now() - startTime) <= ros::Duration(20) ) {
+    pose_msg.header.stamp = ros::Time::now();
     pose_pub.publish(pose_msg);
     ros::spinOnce();
     looprate.sleep();
   }
 
+  startTime = ros::Time::now();
   // Loop until ros quits
   while(ros::ok()) {
     // Grab current time
-    t = ros::Time::now();
+    dt = ros::Time::now() - startTime;
+
     // Update trajectory
-    pose_msg.pose.position.x = x_off + amp*sin(freq*(t.sec + 1e9*t.nsec));
-    pose_msg.pose.position.y = y_off;
+    pose_msg.header.stamp = t;
+    pose_msg.pose.position.x = x_off;
+    pose_msg.pose.position.y = y_off  + amp*sin(freq*dt.toSec());
     pose_msg.pose.position.z = z_off;
     pose_msg.pose.orientation.x = 0;
     pose_msg.pose.orientation.y = 0;
