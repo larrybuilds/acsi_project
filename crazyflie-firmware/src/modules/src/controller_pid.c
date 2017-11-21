@@ -37,81 +37,92 @@ void stateController(control_t *control, setpoint_t *setpoint,
                                          const state_t *state,
                                          const uint32_t tick)
 {
-  if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
-    // Rate-controled YAW is moving YAW angle setpoint
-    if (setpoint->mode.yaw == modeVelocity) {
-       attitudeDesired.yaw -= setpoint->attitudeRate.yaw/500.0f;
-      while (attitudeDesired.yaw > 180.0f)
-        attitudeDesired.yaw -= 360.0f;
-      while (attitudeDesired.yaw < -180.0f)
-        attitudeDesired.yaw += 360.0f;
-    } else {
-      attitudeDesired.yaw = setpoint->attitude.yaw;
-    }
-  }
 
-  if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
-    positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
-  }
+  // Check for direct thrust/torque setpoint control
+  if( setpoint->thrustTorqueControl == true ) {
+      if (RATE_DO_EXECUTE(THRUST_TORQUE_RATE, tick)) {
+          control->roll   = setpoint->torque.x;
+          control->pitch  = setpoint->torque.y;
+          control->yaw    = setpoint->torque.z;
+          control->thrust = setpoint->thrust;
+      }
+  } else {
+      if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+        // Rate-controled YAW is moving YAW angle setpoint
+        if (setpoint->mode.yaw == modeVelocity) {
+           attitudeDesired.yaw -= setpoint->attitudeRate.yaw/500.0f;
+          while (attitudeDesired.yaw > 180.0f)
+            attitudeDesired.yaw -= 360.0f;
+          while (attitudeDesired.yaw < -180.0f)
+            attitudeDesired.yaw += 360.0f;
+        } else {
+          attitudeDesired.yaw = setpoint->attitude.yaw;
+        }
+      }
 
-  if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
-    // Switch between manual and automatic position control
-    if (setpoint->mode.z == modeDisable) {
-      actuatorThrust = setpoint->thrust;
-    }
-    if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
-      attitudeDesired.roll = setpoint->attitude.roll;
-      attitudeDesired.pitch = setpoint->attitude.pitch;
-    }
+      if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
+        positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
+      }
 
-    attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw,
-                                attitudeDesired.roll, attitudeDesired.pitch, attitudeDesired.yaw,
-                                &rateDesired.roll, &rateDesired.pitch, &rateDesired.yaw);
+      if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+        // Switch between manual and automatic position control
+        if (setpoint->mode.z == modeDisable) {
+          actuatorThrust = setpoint->thrust;
+        }
+        if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
+          attitudeDesired.roll = setpoint->attitude.roll;
+          attitudeDesired.pitch = setpoint->attitude.pitch;
+        }
 
-    // For roll and pitch, if velocity mode, overwrite rateDesired with the setpoint
-    // value. Also reset the PID to avoid error buildup, which can lead to unstable
-    // behavior if level mode is engaged later
-    if (setpoint->mode.roll == modeVelocity) {
-      rateDesired.roll = setpoint->attitudeRate.roll;
-      attitudeControllerResetRollAttitudePID();
-    }
-    if (setpoint->mode.pitch == modeVelocity) {
-      rateDesired.pitch = setpoint->attitudeRate.pitch;
-      attitudeControllerResetPitchAttitudePID();
-    }
+        attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw,
+                                    attitudeDesired.roll, attitudeDesired.pitch, attitudeDesired.yaw,
+                                    &rateDesired.roll, &rateDesired.pitch, &rateDesired.yaw);
 
-    // TODO: Investigate possibility to subtract gyro drift.
-    attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z,
-                             rateDesired.roll, rateDesired.pitch, rateDesired.yaw);
+        // For roll and pitch, if velocity mode, overwrite rateDesired with the setpoint
+        // value. Also reset the PID to avoid error buildup, which can lead to unstable
+        // behavior if level mode is engaged later
+        if (setpoint->mode.roll == modeVelocity) {
+          rateDesired.roll = setpoint->attitudeRate.roll;
+          attitudeControllerResetRollAttitudePID();
+        }
+        if (setpoint->mode.pitch == modeVelocity) {
+          rateDesired.pitch = setpoint->attitudeRate.pitch;
+          attitudeControllerResetPitchAttitudePID();
+        }
 
-    attitudeControllerGetActuatorOutput(&control->roll,
-                                        &control->pitch,
-                                        &control->yaw);
+        // TODO: Investigate possibility to subtract gyro drift.
+        attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z,
+                                 rateDesired.roll, rateDesired.pitch, rateDesired.yaw);
 
-    control->yaw = -control->yaw;
-  }
+        attitudeControllerGetActuatorOutput(&control->roll,
+                                            &control->pitch,
+                                            &control->yaw);
 
-  if (tiltCompensationEnabled)
-  {
-    control->thrust = actuatorThrust / sensfusion6GetInvThrustCompensationForTilt();
-  }
-  else
-  {
-    control->thrust = actuatorThrust;
-  }
+        control->yaw = -control->yaw;
+      }
 
-  if (control->thrust == 0)
-  {
-    control->thrust = 0;
-    control->roll = 0;
-    control->pitch = 0;
-    control->yaw = 0;
+      if (tiltCompensationEnabled)
+      {
+        control->thrust = actuatorThrust / sensfusion6GetInvThrustCompensationForTilt();
+      }
+      else
+      {
+        control->thrust = actuatorThrust;
+      }
 
-    attitudeControllerResetAllPID();
-    positionControllerResetAllPID();
+      if (control->thrust == 0)
+      {
+        control->thrust = 0;
+        control->roll = 0;
+        control->pitch = 0;
+        control->yaw = 0;
 
-    // Reset the calculated YAW angle for rate control
-    attitudeDesired.yaw = state->attitude.yaw;
+        attitudeControllerResetAllPID();
+        positionControllerResetAllPID();
+
+        // Reset the calculated YAW angle for rate control
+        attitudeDesired.yaw = state->attitude.yaw;
+      }
   }
 }
 

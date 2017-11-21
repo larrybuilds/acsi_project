@@ -41,10 +41,12 @@
   </group>
 
   <!-- run vicon bridge -->
-  <include file="$(find optitrack)/launch/optitrack_pipeline.launch"/>
+  <include file="$(find optitrack)/launch/optitrack_pipeline.launch">
+    <arg name="iface" value="192.168.1.7"/>
+  </include>
 
   <!-- run rviz -->
-  <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" />
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_demo)/launch/crazyflie_pos.rviz" required="true" />
+  <!-- <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" /> -->
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_demo)/launch/crazyflie_pos.rviz" required="true" /> -->
 
 </launch>

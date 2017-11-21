@@ -4,11 +4,11 @@
   <arg name="frame"   default="rigid_body_1" />
   <arg name="joy_dev" default="/dev/input/js0" />
 
-  <arg name="amp"     default="0.5"/>
-  <arg name="freq"    default="0.5"/>
-  <arg name="x_start" default="0.5"/>
-  <arg name="y_start" default="0.5"/>
-  <arg name="z_hover" default="0.5"/>
+  <arg name="amp"     default="1"/>
+  <arg name="freq"    default="0.1"/>
+  <arg name="x_start" default="-0.5"/>
+  <arg name="y_start" default="-0.5"/>
+  <arg name="z_hover" default="1.2"/>
 
   <!-- Launch crazyflie server -->
   <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
@@ -50,7 +50,9 @@
   </group>
 
   <!-- run optitrack bridge -->
-  <include file="$(find optitrack)/launch/optitrack_pipeline.launch"/>
+  <include file="$(find optitrack)/launch/optitrack_pipeline.launch">
+    <arg name="iface" value="192.168.1.7"/>
+  </include>
 
   <!-- run rviz -->
   <!-- <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" /> -->

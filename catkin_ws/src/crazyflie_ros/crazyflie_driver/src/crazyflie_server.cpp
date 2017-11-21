@@ -15,6 +15,7 @@
 #include "sensor_msgs/Temperature.h"
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Float32.h"
+#include "crazyflie_driver/TorqueThrustStamped.h"
 
 //#include <regex>
 #include <thread>
@@ -82,9 +83,11 @@ public:
     , m_sentExternalPosition(false)
   {
     ros::NodeHandle n;
+
     m_subscribeCmdVel = n.subscribe(tf_prefix + "/cmd_vel", 1, &CrazyflieROS::cmdVelChanged, this);
     m_subscribeExternalPosition = n.subscribe(tf_prefix + "/external_position", 1, &CrazyflieROS::positionMeasurementChanged, this);
     m_serviceEmergency = n.advertiseService(tf_prefix + "/emergency", &CrazyflieROS::emergency, this);
+    m_subscribeCmdThrustTorque = n.subscribe(tf_prefix + "/cmd_thrust_torque", 1, &CrazyflieROS::cmdThrustTorqueChanged, this);
 
     if (m_enable_logging_imu) {
       m_pubImu = n.advertise<sensor_msgs::Imu>(tf_prefix + "/imu", 10);
@@ -264,6 +267,12 @@ private:
       m_cf.sendSetpoint(roll, pitch, yawrate, thrust);
       m_sentSetpoint = true;
     }
+  }
+
+  void cmdThrustTorqueChanged(
+      const crazyflie_driver::TorqueThrustStamped::ConstPtr& msg)
+  {
+      m_cf.sendThrustTorqueGenericSetpoint(6,msg->tx, msg->ty, msg->tz, msg->thrust);
   }
 
   void positionMeasurementChanged(
@@ -542,6 +551,7 @@ private:
   ros::ServiceServer m_serviceUpdateParams;
   ros::Subscriber m_subscribeCmdVel;
   ros::Subscriber m_subscribeExternalPosition;
+  ros::Subscriber m_subscribeCmdThrustTorque;
   ros::Publisher m_pubImu;
   ros::Publisher m_pubTemp;
   ros::Publisher m_pubMag;

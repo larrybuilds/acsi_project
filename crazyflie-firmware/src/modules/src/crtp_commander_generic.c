@@ -67,6 +67,7 @@ enum packet_type {
   cppmEmuType       = 3,
   altHoldType       = 4,
   hoverType         = 5,
+  thrustTorqueType  = 6,
 };
 
 /* ---===== 2 - Decoding functions =====--- */
@@ -292,6 +293,30 @@ static void hoverDecoder(setpoint_t *setpoint, uint8_t type, const void *data, s
   setpoint->velocity_body = true;
 }
 
+/* thrustTorqueDecoder
+ * Set the Crazyflie thrust and axis torques in body-fixed frame
+ */
+struct thrustTorquePacket_s {
+  float tx;        // m in the world frame of reference
+  float ty;        // ...
+  float tz;        // ...
+  uint16_t thrust;  // deg/s
+} __attribute__((packed));
+static void thrustTorqueDecoder(setpoint_t *setpoint, uint8_t type, const void *data, size_t datalen)
+{
+  const struct thrustTorquePacket_s *values = data;
+
+  ASSERT(datalen == sizeof(struct thrustTorquePacket_s));
+
+  setpoint->torque.x = values->tx;
+  setpoint->torque.y = values->ty;
+  setpoint->torque.z = values->tz;
+
+  setpoint->thrust = values->thrust;
+
+  setpoint->thrustTorqueControl = true;
+}
+
  /* ---===== 3 - packetDecoders array =====--- */
 const static packetDecoder_t packetDecoders[] = {
   [stopType]          = stopDecoder,
@@ -300,6 +325,7 @@ const static packetDecoder_t packetDecoders[] = {
   [cppmEmuType]       = cppmEmuDecoder,
   [altHoldType]       = altHoldDecoder,
   [hoverType]         = hoverDecoder,
+  [thrustTorqueType]  = thrustTorqueDecoder,
 };
 
 /* Decoder switch */
@@ -321,6 +347,7 @@ void crtpCommanderGenericDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
     packetDecoders[type](setpoint, type, ((char*)pk->data)+1, pk->size-1);
   }
 }
+
 
 // Params for generic CRTP handlers
 

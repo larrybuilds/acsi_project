@@ -134,6 +134,17 @@ void Crazyflie::sendExternalPositionUpdate(
   sendPacket((const uint8_t*)&position, sizeof(position));
 }
 
+void Crazyflie::sendThrustTorqueGenericSetpoint(
+    uint8_t type,
+    float tx,
+    float ty,
+    float tz,
+    uint16_t thrust)
+{
+    crtpSetpointThrustTorqueRequest request(type, tx, ty, tz, thrust);
+    sendPacket((const uint8_t*)&request, sizeof(request));
+}
+
 void Crazyflie::sendPing()
 {
   uint8_t ping = 0xFF;
@@ -832,4 +843,3 @@ void Crazyflie::handleBatchAck(
     // TODO: generic handle ack here?
   }
 }
-

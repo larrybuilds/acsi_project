@@ -62,7 +62,7 @@ public:
             get(n, "PIDs/Yaw/integratorMin"),
             get(n, "PIDs/Yaw/integratorMax"),
             "yaw")
-        , m_state(TakingOff)
+        , m_state(Idle)
         , m_goal()
         , m_subscribeGoal()
         , m_serviceTakeoff()
@@ -142,7 +142,7 @@ private:
             {
                 tf::StampedTransform transform;
                 m_listener.lookupTransform(m_worldFrame, m_frame, ros::Time(0), transform);
-                if (transform.getOrigin().z() > m_startZ + 0.1 || m_thrust > 40000)
+                if (transform.getOrigin().z() > m_startZ + 0.05 || m_thrust > 40000)
                 {
                     pidReset();
                     m_pidZ.setIntegral(m_thrust / m_pidZ.ki());

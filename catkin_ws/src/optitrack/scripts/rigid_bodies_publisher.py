@@ -163,8 +163,11 @@ class RigidBodiesPublisher(object):
 
               prevtime[body_id] = rospy.get_time()
 
+	  # Extract all unidentified markers from data frame
           for marker in packet.other_markers:
+	      # Append each marker to the array
               upoint_msg.upoints.append(Point(*marker))
+	  # Fill in timestamp
           upoint_msg.header.stamp = rospy.Time.now()
           
         pose_pub.publish(array_msg)

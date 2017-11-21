@@ -44,6 +44,7 @@ void crtpCommanderInit(void)
   crtpInit();
   crtpRegisterPortCB(CRTP_PORT_SETPOINT, commanderCrtpCB);
   crtpRegisterPortCB(CRTP_PORT_SETPOINT_GENERIC, commanderCrtpCB);
+
   isInit = true;
 }
 

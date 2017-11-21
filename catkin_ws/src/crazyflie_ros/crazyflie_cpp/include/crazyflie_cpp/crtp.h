@@ -205,6 +205,7 @@ struct crtpSetpointRequest
   uint16_t thrust;
 }  __attribute__((packed));
 
+
 // Port 4 (Memory access)
 
 // Port 5 (Data logging)
@@ -430,7 +431,32 @@ struct crtpExternalPositionUpdate
   float z;
 }  __attribute__((packed));
 
+// Port 0x07 (Thrust-Torque Generic Setpoint Commander)
 
+struct crtpSetpointThrustTorqueRequest
+{
+  crtpSetpointThrustTorqueRequest(
+    uint8_t type,
+    float tx,
+    float ty,
+    float tz,
+    uint16_t thrust)
+    // Generic Setpoint port, thrustTorqueType
+    : header(0x07, 0)
+    , type(type)
+    , tx(tx)
+    , ty(ty)
+    , tz(tz)
+    , thrust(thrust)
+  {
+  }
+  const crtp header;
+  uint8_t type;
+  float tx;
+  float ty;
+  float tz;
+  uint16_t thrust;
+}  __attribute__((packed));
 
 // Port 13 (Platform)
 

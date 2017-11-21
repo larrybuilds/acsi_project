@@ -41,6 +41,7 @@ add_message_files(
   LogBlock.msg
   GenericLogData.msg
   crtpPacket.msg
+  TorqueThrustStamped.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

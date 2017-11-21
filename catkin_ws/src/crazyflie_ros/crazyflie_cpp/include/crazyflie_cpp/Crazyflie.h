@@ -82,6 +82,13 @@ public:
     float yawrate,
     uint16_t thrust);
 
+  void sendThrustTorqueGenericSetpoint(
+      uint8_t type,
+      float tx,
+      float ty,
+      float tz,
+      uint16_t thrust);
+
   void sendExternalPositionUpdate(
     float x,
     float y,

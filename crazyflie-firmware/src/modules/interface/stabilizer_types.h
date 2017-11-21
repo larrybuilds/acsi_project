@@ -55,6 +55,7 @@ struct vec3_s {
 typedef struct vec3_s point_t;
 typedef struct vec3_s velocity_t;
 typedef struct vec3_s acc_t;
+typedef struct vec3_s torque_t;
 
 /* Orientation as a quaternion */
 typedef struct quaternion_s {
@@ -161,6 +162,8 @@ typedef struct setpoint_s {
   point_t position;
   velocity_t velocity;
   bool velocity_body;
+  torque_t torque;
+  bool thrustTorqueControl;
 
   struct {
     stab_mode_t x;
@@ -170,6 +173,7 @@ typedef struct setpoint_s {
     stab_mode_t pitch;
     stab_mode_t yaw;
   } mode;
+
 } setpoint_t;
 
 /** Estimate of position */
@@ -219,6 +223,7 @@ typedef struct tofMeasurement_s {
 #define RATE_MAIN_LOOP RATE_1000_HZ
 #define ATTITUDE_RATE RATE_500_HZ
 #define POSITION_RATE RATE_100_HZ
+#define THRUST_TORQUE_RATE RATE_500_HZ
 
 #define RATE_DO_EXECUTE(RATE_HZ, TICK) ((TICK % (RATE_MAIN_LOOP / RATE_HZ)) == 0)
 
