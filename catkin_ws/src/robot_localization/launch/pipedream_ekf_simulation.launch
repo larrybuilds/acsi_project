@@ -1,0 +1,12 @@
+<launch>
+
+  <rosparam command="load" file="$(find robot_config)/params/pipedream_config.yaml" />
+
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se" clear_params="false">
+    <rosparam command="load" file="$(find robot_localization)/params/pipedream_ekf_simulation.yaml" />
+  </node>
+
+    <node pkg="robot_localization" type="odometry_publisher_nav_msgs" name="odometry_publisher_nav_msgs"/>
+
+
+</launch>

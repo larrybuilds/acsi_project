@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+
+<launch>
+	
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se">
+    <rosparam command="load" file="$(find robot_localization)/params/pipedream_ekf.yaml" />
+  </node>
+
+</launch>
+
+<!-- rosbag filter /home/lawrence/CMU/research/DOE_pipecrawler/PipeDream/bags/pipebag_2017-07-08-10-32-58.bag /home/lawrence/CMU/research/DOE_pipecrawler/PipeDream/bags/pipebag_2017-07-08-10-32-58_just_imu_enc.bag "topic == '/motor/encoders' or topic == '/imu/data'" -->
+
+

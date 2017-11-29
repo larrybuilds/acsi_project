@@ -11,7 +11,8 @@
 #include "ros/ros.h"
 #include "optitrack/UnidentifiedPointArray.h"
 #include "optitrack/RigidBodyArray.h"
-#include "ball_publisher/FlyingBilboPose.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "nav_msgs/Odometry.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,7 +47,7 @@ void rigidBodyCallback(const optitrack::RigidBodyArray::ConstPtr& msg) {
         qz = msg->bodies[rbIndex].pose.orientation.z;
 
     } else {
-        ROS_WARN("No rigid body found with ID: %d", rbID);
+        //ROS_WARN("No rigid body found with ID: %d", rbID);
     }
 }
 
@@ -76,60 +77,69 @@ void unidentifiedPointCallback(const optitrack::UnidentifiedPointArray::ConstPtr
         by = msg->upoints[ballIndex].x;
         bz = msg->upoints[ballIndex].y;
     } else {
-        ROS_WARN("No suspended ball found!");
+        //ROS_WARN("No suspended ball found!");
     }
 }
 
 int main(int argc, char **argv){
-    ros::init(argc, argv, "ball_publisher");
+    ros::init(argc, argv, "state_publisher");
     ros::NodeHandle n;
     ros::NodeHandle n_private("~");
 
     std::string rigid_topic;
     std::string upoint_topic;
-    std::string bilbo_topic;
+    std::string ball_topic;
+    std::string quad_topic;
 
     n_private.param<std::string>("rigid_topic",  rigid_topic,  "/optitrack/rigid_bodies");
     n_private.param<std::string>("upoint_topic", upoint_topic, "/optitrack/upoints");
-    n_private.param<std::string>("bilbo_topic",  bilbo_topic,  "/bilbo/pose");
+    n_private.param<std::string>("ball_pose_topic",  ball_topic,  "/ball/pose");
+    n_private.param<std::string>("quad_pose_topic",  quad_topic,  "/quad/pose");
+
     n_private.param<int>("rigid_id", rbID, 0);
     n_private.param<float>("ball_roi", ball_roi, 0.25);
 
-    ros::Publisher  bilbo_pub = n.advertise<ball_publisher::FlyingBilboPose>(bilbo_topic, 100);
-    ros::Subscriber rig_sub = n.subscribe<optitrack::RigidBodyArray>(rigid_topic,100,rigidBodyCallback);
-    ros::Subscriber upt_sub = n.subscribe<optitrack::UnidentifiedPointArray>(upoint_topic,100,unidentifiedPointCallback);
+    ros::Publisher  ball_pub = n.advertise<nav_msgs::Odometry>(ball_topic, 1);
+    ros::Publisher  quad_pub = n.advertise<nav_msgs::Odometry>(quad_topic, 1);
+    ros::Subscriber rig_sub = n.subscribe<optitrack::RigidBodyArray>(rigid_topic,1,rigidBodyCallback);
+    ros::Subscriber upt_sub = n.subscribe<optitrack::UnidentifiedPointArray>(upoint_topic,1,unidentifiedPointCallback);
 
-    ros::Rate loop_rate(200);
+    ros::Rate loop_rate(400);
 
-    ball_publisher::FlyingBilboPose pose_msg;
+    nav_msgs::Odometry ball_pose_msg;
+    nav_msgs::Odometry quad_pose_msg;
+
+    quad_pose_msg.header.frame_id = "odom";
+    ball_pose_msg.header.frame_id = "base_link";
+    quad_pose_msg.child_frame_id = "base_link";
+    ball_pose_msg.child_frame_id = "ball";
 
     while( ros::ok() ) {
-        if( rbIndex >= 0 ) {
-            pose_msg.validQuad = true;
-        } else {
-            pose_msg.validQuad = false;
-        }
 
         if( ballIndex >= 0 ) {
-            pose_msg.validBall = true;
-        } else {
-            pose_msg.validBall = false;
+            ball_pose_msg.header.stamp = ros::Time::now();
+
+            ball_pose_msg.pose.pose.position.x = bx;
+            ball_pose_msg.pose.pose.position.y = by;
+            ball_pose_msg.pose.pose.position.z = bz;
+
+            ball_pub.publish(ball_pose_msg);
         }
 
-        pose_msg.ball.x = bx;
-        pose_msg.ball.y = by;
-        pose_msg.ball.z = bz;
+        if( rbIndex >= 0 ) {
+            quad_pose_msg.header.stamp = ros::Time::now();
 
-        pose_msg.quad.position.x = rx;
-        pose_msg.quad.position.y = ry;
-        pose_msg.quad.position.z = rz;
+            quad_pose_msg.pose.pose.position.x = rx;
+            quad_pose_msg.pose.pose.position.y = ry;
+            quad_pose_msg.pose.pose.position.z = rz;
 
-        pose_msg.quad.orientation.w = qw;
-        pose_msg.quad.orientation.x = qx;
-        pose_msg.quad.orientation.y = qy;
-        pose_msg.quad.orientation.z = qz;
+            quad_pose_msg.pose.pose.orientation.w = qw;
+            quad_pose_msg.pose.pose.orientation.x = qx;
+            quad_pose_msg.pose.pose.orientation.y = qy;
+            quad_pose_msg.pose.pose.orientation.z = qz;
 
-        bilbo_pub.publish(pose_msg);
+            quad_pub.publish(quad_pose_msg);
+        }
 
         loop_rate.sleep();
         ros::spinOnce();

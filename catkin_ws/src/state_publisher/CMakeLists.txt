@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(ball_publisher)
+project(state_publisher)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   geometry_msgs
+  nav_msgs
   message_generation
   std_msgs
 )
@@ -26,9 +27,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(ball_publisher src/ball_publisher.cpp)
+add_executable(state_publisher src/state_publisher.cpp)
 
 target_link_libraries(
-  ball_publisher
+  state_publisher
   ${catkin_LIBRARIES}
 )
