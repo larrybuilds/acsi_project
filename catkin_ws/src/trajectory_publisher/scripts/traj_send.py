@@ -9,6 +9,7 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 
+from geometry_msgs.msg import Point
 from optitrack.msg import RigidBody, RigidBodyArray
 
 # URI to the Crazyflie to connect to
@@ -22,6 +23,9 @@ _z0 = 0
 _x = 0
 _y = 0
 _z = 0
+_xD = 0
+_yD = 0
+_zD = 0
 
 # Change the sequence according to your setup
 #             x    y    z  YAW
@@ -110,6 +114,9 @@ def rigidBodyCallback(data):
     global _x0
     global _y0
     global _z0
+    global _xD
+    global _yD
+    global _zD
     global _x
     global _y
     global _z
@@ -118,8 +125,11 @@ def rigidBodyCallback(data):
         if firstPos == False:
             _x0 = data.bodies[0].pose.position.x
             _y0 = data.bodies[0].pose.position.y
-            _z0 = data.bodies[0].pose.position.z
-            print('pos0: ({}, {}, {})'.format(_x0,_y0,_z0))
+            _z0 = 1.2
+            _xD = _x0
+            _yD = _y0
+            _zD = _z0
+
             firstPos = True
         else:
             _x = data.bodies[0].pose.position.x
@@ -127,19 +137,36 @@ def rigidBodyCallback(data):
             _z = data.bodies[0].pose.position.z
             scf.cf.extpos.send_extpos(_x, _y, _z)
 
-def sendSetpoint(scf):
+def setPointCallback(data):
+    global _xD
+    global _yD
+    global _zD
+
+    _xD = data.x
+    _yD = data.y
+    _zD = data.z
+
+def sendHover(scf):
     global _x0
     global _y0
     global _z0
 
     #print('Setpoint X({})  Y({})  Z({})'.format(_x0,_y0,_z0))
-    scf.cf.commander.send_setpoint(_y0, _x0, 0, int((_z0+0.5) * 1000))
+    scf.cf.commander.send_setpoint(_y0, _x0, 0, int(_z0 * 1000))
     #scf.cf.commander.send_hover_setpoint(0, 0, 0, _z0+0.5)
+
+def sendSetpoint(scf):
+    global _xD
+    global _yD
+    global _zD
+
+    scf.cf.commander.send_setpoint(_yD, _xD, 0, int(_zD * 1000))
 
 if __name__ == '__main__':
 
     rospy.init_node('traj_send', anonymous=True)
     rospy.Subscriber("/optitrack/rigid_bodies",RigidBodyArray, rigidBodyCallback)
+    rospy.Subscriber("/crazyflie/waypoint",Point, setPointCallback)
 
     # Initialize the low-level drivers (don't list the debug drivers)
     cflib.crtp.init_drivers(enable_debug_driver=False)
@@ -160,6 +187,10 @@ if __name__ == '__main__':
         rate = rospy.Rate(20)
         while not firstPos:
             rate.sleep()
+
+        for x in range(50):
+            sendHover(scf)
+            time.sleep(0.1)
 
         rospy.loginfo("Recieving optitrack data, sending setpoint")
         while not rospy.is_shutdown():
