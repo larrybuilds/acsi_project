@@ -12,15 +12,31 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  crazyflie_driver
+  cmake_modules
+)
+find_package(Eigen REQUIRED)
+
+catkin_package(
+    INCLUDE_DIRS include
+    DEPENDS Eigen)
+
+include_directories(
+    include
+    ../../../crazyflie-lib-python
+    ${Eigen_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
 )
 
-catkin_package()
-
-include_directories(${catkin_INCLUDE_DIRS})
-
 add_executable(trajectory_publisher src/trajectory_publisher.cpp)
+add_executable(lqr_controller src/lqr_controller.cpp)
 
 target_link_libraries(
   trajectory_publisher
   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(
+    lqr_controller
+    ${catkin_LIBRARIES}
 )

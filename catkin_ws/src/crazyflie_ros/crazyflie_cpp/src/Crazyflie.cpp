@@ -145,6 +145,17 @@ void Crazyflie::sendThrustTorqueGenericSetpoint(
     sendPacket((const uint8_t*)&request, sizeof(request));
 }
 
+void Crazyflie::sendHoverGenericSetpoint(
+    uint8_t type,
+    float vx,
+    float vy,
+    float yawrate,
+    float zDistance)
+{
+    crtpSetpointHoverRequest request(type, vx, vy, yawrate, zDistance);
+    sendPacket((const uint8_t*)&request, sizeof(request));
+}
+
 void Crazyflie::sendPing()
 {
   uint8_t ping = 0xFF;

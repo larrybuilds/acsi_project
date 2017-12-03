@@ -16,6 +16,7 @@
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Float32.h"
 #include "crazyflie_driver/TorqueThrustStamped.h"
+#include "crazyflie_driver/HoverStamped.h"
 
 //#include <regex>
 #include <thread>
@@ -88,6 +89,7 @@ public:
     m_subscribeExternalPosition = n.subscribe(tf_prefix + "/external_position", 1, &CrazyflieROS::positionMeasurementChanged, this);
     m_serviceEmergency = n.advertiseService(tf_prefix + "/emergency", &CrazyflieROS::emergency, this);
     m_subscribeCmdThrustTorque = n.subscribe(tf_prefix + "/cmd_thrust_torque", 1, &CrazyflieROS::cmdThrustTorqueChanged, this);
+    m_subscribeCmdHover = n.subscribe(tf_prefix+"/cmd_hover", 1, &CrazyflieROS::cmdHoverChange, this);
 
     if (m_enable_logging_imu) {
       m_pubImu = n.advertise<sensor_msgs::Imu>(tf_prefix + "/imu", 10);
@@ -273,6 +275,15 @@ private:
       const crazyflie_driver::TorqueThrustStamped::ConstPtr& msg)
   {
       m_cf.sendThrustTorqueGenericSetpoint(6,msg->tx, msg->ty, msg->tz, msg->thrust);
+      m_sentSetpoint = true;
+  }
+
+  void cmdHoverChange(
+      const crazyflie_driver::HoverStamped::ConstPtr& msg)
+  {
+      ROS_INFO("Sending hover setpoint");
+      m_cf.sendHoverGenericSetpoint(5,msg->vx,msg->vy,msg->yawrate,msg->zDistance);
+      m_sentSetpoint = true;
   }
 
   void positionMeasurementChanged(
@@ -293,7 +304,8 @@ private:
     std::function<void(float)> cb_lq = std::bind(&CrazyflieROS::onLinkQuality, this, std::placeholders::_1);
     m_cf.setLinkQualityCallback(cb_lq);
 
-
+    ROS_INFO("Resetting kalman estimator");
+    //m_cf.setParam()
 
     if (m_enableParameters)
     {
@@ -411,7 +423,9 @@ private:
 
     while(!m_isEmergency) {
       // make sure we ping often enough to stream data out
+      //ROS_INFO("log: %s  setpoint: %s   ext: %s", m_enableLogging ? "true" : "false",m_sentSetpoint ? "true" : "false",m_sentExternalPosition ? "true" : "false");
       if (m_enableLogging && !m_sentSetpoint && !m_sentExternalPosition) {
+
         m_cf.transmitPackets();
         m_cf.sendPing();
         if(m_enable_logging_packets) {
@@ -552,6 +566,8 @@ private:
   ros::Subscriber m_subscribeCmdVel;
   ros::Subscriber m_subscribeExternalPosition;
   ros::Subscriber m_subscribeCmdThrustTorque;
+  ros::Subscriber m_subscribeCmdHover;
+
   ros::Publisher m_pubImu;
   ros::Publisher m_pubTemp;
   ros::Publisher m_pubMag;

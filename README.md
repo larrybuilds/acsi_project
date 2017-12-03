@@ -64,3 +64,11 @@ Using 5 retro-reflective balls, mounted by the 4 rotors and 1 center, select the
 ### Reseting the Body-fixed Frame
 
 Select the the rigid body and navigate to ```View -> Rigid Body Properties```. In the panel that comes up, go to the ```Orientation``` ribbon. Here, you can align the body fixed frame of the crazyflie so that frame is presented correctly in ROS. Algin the x-axis of the crazyflie pointing positive away from the lab door and click ```Reset to Current Orientation``` button to zero the roll,pitch,yaw
+
+## Running Hover setpoint demo with Optitrack
+
+Run
+```
+roslaunch launch/python_traj.launch
+```
+This will call the python script that will configure the onboard EKF and take in the optitrack data and command a hover setpoint 0.5m above the quad's current position.

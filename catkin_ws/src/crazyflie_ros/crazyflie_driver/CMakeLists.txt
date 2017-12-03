@@ -42,6 +42,7 @@ add_message_files(
   GenericLogData.msg
   crtpPacket.msg
   TorqueThrustStamped.msg
+  HoverStamped.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

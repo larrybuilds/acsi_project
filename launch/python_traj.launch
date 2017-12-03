@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="uri"     default="radio://0/80/2M" />
+  <arg name="frame"   default="rigid_body_1" />
+
+  <group ns="crazyflie">
+
+    <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /base_link 100" />
+    <node pkg="tf" type="static_transform_publisher" name="world_odom_broad" args="0 0 0 0 0 0 1 world odom 10"/>
+
+    <node name="traj_control" pkg="trajectory_publisher" type="traj_send.py" output="screen"/>
+  </group>
+
+  <!-- run optitrack bridge -->
+  <include file="$(find optitrack)/launch/optitrack_pipeline.launch">
+    <arg name="iface" value="192.168.1.7"/>
+  </include>
+
+</launch>

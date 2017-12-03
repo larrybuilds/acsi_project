@@ -458,6 +458,29 @@ struct crtpSetpointThrustTorqueRequest
   uint16_t thrust;
 }  __attribute__((packed));
 
+struct crtpSetpointHoverRequest
+{
+    crtpSetpointHoverRequest(
+        uint8_t type,
+        float vx,
+        float vy,
+        float yawrate,
+        float zDistance)
+    : header(0x07, 0)
+    , type(type)
+    , vx(vx)
+    , vy(vy)
+    , yawrate(yawrate)
+    , zDistance(zDistance)
+    {}
+        const crtp header;
+        uint8_t type;
+        float vx;
+        float vy;
+        float yawrate;
+        float zDistance;
+} __attribute__((packed));
+
 // Port 13 (Platform)
 
 // The crazyflie-nrf firmware sends empty packets with the signal strength, if nothing else is in the queue

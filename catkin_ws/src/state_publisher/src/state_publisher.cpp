@@ -12,20 +12,30 @@
 #include "optitrack/UnidentifiedPointArray.h"
 #include "optitrack/RigidBodyArray.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Odometry.h"
+#include <tf/transform_listener.h>
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <inttypes.h>
 
+#define ALPHA 0.3
+
 int rbID;
 int rbIndex;
 int ballIndex;
 float ball_roi;
 float rx, ry, rz;   // In ROS world coords
+float drx, dry, drz;
+float droll, dpitch, dyaw;
 float qw, qx, qy, qz;
 float bx, by, bz;   // In ROS world coords
+
+float last_roll, last_pitch, last_yaw;
+float last_rx, last_ry, last_rz;
 
 void rigidBodyCallback(const optitrack::RigidBodyArray::ConstPtr& msg) {
     rbIndex = -1;
@@ -101,20 +111,50 @@ int main(int argc, char **argv){
 
     ros::Publisher  ball_pub = n.advertise<nav_msgs::Odometry>(ball_topic, 1);
     ros::Publisher  quad_pub = n.advertise<nav_msgs::Odometry>(quad_topic, 1);
+    ros::Publisher  quad_state = n.advertise<nav_msgs::Odometry>("/odometry/filtered", 1);
+    ros::Publisher  ext_pose = n.advertise<geometry_msgs::PointStamped>("/crazyflie/external_position",1);
     ros::Subscriber rig_sub = n.subscribe<optitrack::RigidBodyArray>(rigid_topic,1,rigidBodyCallback);
     ros::Subscriber upt_sub = n.subscribe<optitrack::UnidentifiedPointArray>(upoint_topic,1,unidentifiedPointCallback);
 
-    ros::Rate loop_rate(400);
+    ros::Rate loop_rate(1);
 
     nav_msgs::Odometry ball_pose_msg;
     nav_msgs::Odometry quad_pose_msg;
+    nav_msgs::Odometry quad_state_msg;
 
     quad_pose_msg.header.frame_id = "odom";
     ball_pose_msg.header.frame_id = "base_link";
     quad_pose_msg.child_frame_id = "base_link";
     ball_pose_msg.child_frame_id = "ball";
 
+    quad_state_msg.header.frame_id = "odom";
+    quad_state_msg.child_frame_id = "base_link";
+
+    ros::Duration dt;
+    ros::Time lastTime = ros::Time::now();
+
+    last_roll = 0;
+    last_pitch = 0;
+    last_yaw = 0;
+    last_rx = 0;
+    last_ry = 0;
+    last_rz = 0;
+    drx = 0;
+    dry = 0;
+    drz = 0;
+    droll = 0;
+    dpitch = 0;
+    dyaw = 0;
+
+    rbIndex = -1;
+    ballIndex = -1;
+
+    ros::Duration(5).sleep();
+
     while( ros::ok() ) {
+
+        dt = ros::Time::now() - lastTime;
+        lastTime = ros::Time::now();
 
         if( ballIndex >= 0 ) {
             ball_pose_msg.header.stamp = ros::Time::now();
@@ -127,18 +167,71 @@ int main(int argc, char **argv){
         }
 
         if( rbIndex >= 0 ) {
-            quad_pose_msg.header.stamp = ros::Time::now();
+            // quad_pose_msg.header.stamp = ros::Time::now();
+            //
+            // quad_pose_msg.pose.pose.position.x = rx;
+            // quad_pose_msg.pose.pose.position.y = ry;
+            // quad_pose_msg.pose.pose.position.z = rz;
+            //
+            // quad_pose_msg.pose.pose.orientation.w = qw;
+            // quad_pose_msg.pose.pose.orientation.x = qx;
+            // quad_pose_msg.pose.pose.orientation.y = qy;
+            // quad_pose_msg.pose.pose.orientation.z = qz;
+            //
+            // quad_pub.publish(quad_pose_msg);
 
-            quad_pose_msg.pose.pose.position.x = rx;
-            quad_pose_msg.pose.pose.position.y = ry;
-            quad_pose_msg.pose.pose.position.z = rz;
 
-            quad_pose_msg.pose.pose.orientation.w = qw;
-            quad_pose_msg.pose.pose.orientation.x = qx;
-            quad_pose_msg.pose.pose.orientation.y = qy;
-            quad_pose_msg.pose.pose.orientation.z = qz;
 
-            quad_pub.publish(quad_pose_msg);
+            // quad_state_msg.header.stamp = ros::Time::now();
+            //
+            // quad_state_msg.pose.pose.position.x = rx;
+            // quad_state_msg.pose.pose.position.y = ry;
+            // quad_state_msg.pose.pose.position.z = rz;
+            // quad_state_msg.pose.pose.orientation.w = qw;
+            // quad_state_msg.pose.pose.orientation.x = qx;
+            // quad_state_msg.pose.pose.orientation.y = qy;
+            // quad_state_msg.pose.pose.orientation.z = qz;
+            //
+            // drx = ALPHA*((rx - last_rx)/dt.toSec()); + (1-ALPHA)*drx;
+            // dry = ALPHA*((ry - last_ry)/dt.toSec()) + (1-ALPHA)*dry;
+            // drz = ALPHA*((rz - last_rz)/dt.toSec()) + (1-ALPHA)*drz;
+            //
+            // tfScalar roll, pitch, yaw;
+            // tf::Matrix3x3(
+            //     tf::Quaternion(
+            //         qx,
+            //         qy,
+            //         qz,
+            //         qw
+            //     )).getRPY(roll, pitch, yaw);
+            // droll  = ALPHA*((roll-last_roll)/dt.toSec())   + (1-ALPHA)*droll;
+            // dpitch = ALPHA*((pitch-last_pitch)/dt.toSec()) + (1-ALPHA)*dpitch;
+            // dyaw   = ALPHA*((yaw-last_yaw)/dt.toSec())     + (1-ALPHA)*dyaw;
+            // //ROS_INFO("dr: %f   dp: %f   dy: %f", roll-last_roll, pitch-last_pitch, yaw-last_yaw);
+            // last_roll = roll;
+            // last_pitch = pitch;
+            // last_yaw = yaw;
+            //
+            // last_rx = rx;
+            // last_ry = ry;
+            // last_rz = rz;
+            //
+            // quad_state_msg.twist.twist.linear.x = drx;
+            // quad_state_msg.twist.twist.linear.y = dry;
+            // quad_state_msg.twist.twist.linear.z = drz;
+            // quad_state_msg.twist.twist.angular.x = droll;
+            // quad_state_msg.twist.twist.angular.y = dpitch;
+            // quad_state_msg.twist.twist.angular.z = dyaw;
+            //
+            // quad_state.publish(quad_state_msg);
+
+            geometry_msgs::PointStamped pnt_msg;
+            pnt_msg.header.stamp = ros::Time::now();
+            pnt_msg.point.x = rx;
+            pnt_msg.point.y = ry;
+            pnt_msg.point.z = rz;
+
+            ext_pose.publish(pnt_msg);
         }
 
         loop_rate.sleep();

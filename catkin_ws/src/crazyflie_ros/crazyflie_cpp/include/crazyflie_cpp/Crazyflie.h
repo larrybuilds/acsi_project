@@ -89,6 +89,13 @@ public:
       float tz,
       uint16_t thrust);
 
+  void sendHoverGenericSetpoint(
+      uint8_t type,
+      float vx,
+      float vy,
+      float yawrate,
+      float zDistance);
+
   void sendExternalPositionUpdate(
     float x,
     float y,

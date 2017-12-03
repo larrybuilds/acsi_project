@@ -1,0 +1,2 @@
+PLATFORM=CF2
+ESTIMATOR=kalman

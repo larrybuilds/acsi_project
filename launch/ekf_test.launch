@@ -24,7 +24,8 @@
         <arg name="frame" value="$(arg frame)" />
       </include>
 
-      <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /crazyflie/base_link 100" />
+      <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /base_link 100" />
+      <node pkg="tf" type="static_transform_publisher" name="world_odom_broad" args="0 0 0 0 0 0 1 world odom 10"/>
 
       <node name="joystick_controller" pkg="crazyflie_demo" type="controller.py" output="screen">
         <param name="use_crazyflie_controller" value="True" />

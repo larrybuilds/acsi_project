@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
+import time
 import rospy
-from keyboard.msgs import Key
+from keyboard.msg import Key
 from crazyflie_driver.srv import UpdateParams
 from std_srvs.srv import Empty
 
@@ -10,6 +10,15 @@ class Controller():
         rospy.wait_for_service('update_params')
         rospy.loginfo("found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
+
+        # Reset the kalman filter
+        rospy.loginfo("resetting kalman estimator")
+        rospy.set_param("kalman/resetEstimation", 1)
+        self._update_params(["kalman/resetEstimation"])
+        time.sleep(0.1)
+        rospy.set_param("kalman/resetEstimation", 0)
+        self._update_params(["kalman/resetEstimation"])
+        rospy.loginfo("kalman estimator reset")
 
         rospy.loginfo("waiting for emergency service")
         rospy.wait_for_service('emergency')
@@ -32,19 +41,19 @@ class Controller():
 
         # subscribe to the keyboard input at the end to make sure that all required
         # services were found
-        self._code = None
+        self._code = 0
         rospy.Subscriber(key_topic, Key, self._keyChanged)
 
     def _keyChanged(self, data):
-	if self._code != data.code	
-		# Space bar means emergency requested        
-		if data.code == 32
+	if self._code != data.code:
+		# Space bar means emergency requested
+		if data.code == 32:
 			self._emergency()
 		# l key means land requested
-		if data.code == 108
+		if data.code == 108:
 			self._land()
 		# t key means takeoff requested
-		if data.code == 116
+		if data.code == 116:
 			self._takeoff()
 
         self._code = data.code

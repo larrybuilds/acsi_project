@@ -155,7 +155,7 @@ void systemTask(void *arg)
 
   StateEstimatorType estimator = anyEstimator;
   deckInit();
-  estimator = deckGetRequiredEstimator();
+  estimator = kalmanEstimator;
   stabilizerInit(estimator);
   soundInit();
   memInit();
