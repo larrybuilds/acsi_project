@@ -19,6 +19,8 @@ class Controller():
         rospy.set_param("kalman/resetEstimation", 0)
         self._update_params(["kalman/resetEstimation"])
         rospy.loginfo("kalman estimator reset")
+        rospy.set_param("flightmode/posSet", 1)
+        self._update_params([flightmode/posSet])
 
         rospy.loginfo("waiting for emergency service")
         rospy.wait_for_service('emergency')

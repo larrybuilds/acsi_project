@@ -11,17 +11,12 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 
 from geometry_msgs.msg import Point
-from geometry_msgs.msg import Twist
 from optitrack.msg import RigidBody, RigidBodyArray
-from optitrack.msg import UnidentifiedPointArray
 
 # URI to the Crazyflie to connect to
 uri = 'radio://0/80/2M'
 firstPos = False
-readyToTrack = False
 connectedToCrazyflie = False
-counter = 0
-rawVx = 0
 
 freq = 8.087026648
 
@@ -35,22 +30,10 @@ _xD = 0
 _yD = 0
 _zD = 0
 _ogZ = 0
-vx = 0
-vy = 0
-vz = 0
-tx = 0
-ty = 0
-tz = 0
 
 _bx = 0
 _by = 0
 _bz = 0
-_lastBx = 0
-_lastBy = 0
-_lastBz = 0
-lastTime = time.time()
-
-ballValid = False
 
 # Change the sequence according to your setup
 #             x    y    z    dt
@@ -164,7 +147,7 @@ def extPoseCallback(data):
         if firstPos == False:
             _x0 = data.x
             _y0 = data.y
-            _z0 = 0.7
+            _z0 = 1.2
             _ogZ = data.z
 
             _xD = _x0
@@ -182,78 +165,43 @@ def ballPoseCallback(data):
     global _bx
     global _by
     global _bz
-    global _lastBx
-    global _lastBy
-    global _lastBz
-    global _z
-    global lastTime
-    global ballValid
-    global readyToTrack
-    global vx
-    global vy
-    global vz
-    global rawVx
-    global counter
-    global tx
-    global ty
-    global tz
 
-    ballValid = False
-
-    dt = time.time() - lastTime
-    lastTime = time.time()
-    if dt > 1:
-        dt = 0.002
-
-    vz1 = 0
     if connectedToCrazyflie == True:
-        if readyToTrack == True:
-            for pose in data.upoints:
-                if pose.z < 2 and pose.z > -2 and pose.y < 1.8 and pose.y > 0 and pose.x < 1.5 and pose.x > -1:
+        _bx = data.x
+        _by = data.y
+        _bz = data.z
 
-                    # _lastBx = _bx
-                    # _lastBy = _by
-                    # _lastBz = _bz
-                    _bx = pose.z
-                    _by = pose.x
-                    _bz = pose.y
-                    # # print('Trackinig ball at X({}) Y({}) Z({})'.format(_bx,_by,_bz))
-                    # ballValid = True
-                    #
-                    # tx = _bx
-                    # ty = _by
-                    # tz = _bz
-                    # alpha = 0.1
-                    # rawVx = (_bx-_lastBx)/dt
-                    # vx = alpha*((_bx - _lastBx)/dt) + (1-alpha)*vx
-                    # vy = alpha*((_by - _lastBy)/dt) + (1-alpha)*vy
-                    # vz = alpha*((_bz - _lastBz)/dt) + (1-alpha)*vz
-                    # vz1 = vz
-                    # # print('VX({}) VY({}) VZ({}) dt({})'.format(vx,vy,vz,dt))
-                    # t = 0
-                    #
-                    # if( abs(vz) < 25 ):
-                    #     while tz > _z0:
-                    #         tx = tx + vx*0.001
-                    #         ty = ty + vy*0.001
-                    #         tz = tz + vz1*0.001
-                    #         vz1 = vz1 - 0.00981
-                    #         t = t + 0.001
+def rigidBodyCallback(data):
+    global firstPos
+    global connectedToCrazyflie
+    global _x0
+    global _y0
+    global _z0
+    global _xD
+    global _yD
+    global _zD
+    global _x
+    global _y
+    global _z
+    global _ogZ
 
-                    # print('Sending X({}) Y({}) Z({}) T({})'.format(x,y,_z,t))
+    if connectedToCrazyflie == True:
+        if firstPos == False:
+            _x0 = data.bodies[0].pose.position.x
+            _y0 = data.bodies[0].pose.position.y
+            _z0 = 1.2
+            _ogZ = data.bodies[0].pose.position.z
+            print('GZ {}'.format(_ogZ))
+            _xD = _x0
+            _yD = _y0
+            _zD = _z0
 
-                    # if int(tz*1000) > 0 and int(tz*1000) < 0xFFFF and tx < 2 and tx > -2 and ty < 1.5 and ty > -1:
-                        # print('Sending X({}) Y({}) Z({}) T({})'.format(x,y,_z0,t))
-                    # scf.cf.commander.send_setpoint(ty, tx, 0, int(_z0 * 1000))
-                    scf.cf.commander.send_setpoint(_by, _bx, 0, int(_z0 * 1000))
-                    break
-                    # else:
-                    #     # print('Ball location out of range X({}) Y({}) Z({})'.format(x,y,_z))
-                    #     sendHover(scf)
-
-                else:
-                    ballValid = False
-                    sendHover(scf)
+            firstPos = True
+        else:
+            _x = data.bodies[0].pose.position.x
+            _y = data.bodies[0].pose.position.y
+            _z = data.bodies[0].pose.position.z
+            scf.cf.extpos.send_extpos(_x, _y, _z)
 
 def setPointCallback(data):
     global _xD
@@ -273,38 +221,18 @@ def sendHover(scf):
     scf.cf.commander.send_setpoint(_y0, _x0, 0, int(_z0 * 1000))
     #scf.cf.commander.send_hover_setpoint(0, 0, 0, _z0+0.5)
 
-def sendHoverAtPosition(scf):
-    global _x
-    global _y
-    global _z
-
-    scf.cf.commander.send_setpoint(_y, _x, 0, int(_z * 1000))
-
 def sendSetpoint(scf,setpoint):
     global _x0
     global _y0
     global _z0
     scf.cf.commander.send_setpoint(setpoint[1]+_y0, setpoint[0]+_x0, 0, int((setpoint[2]+_z0) * 1000))
 
-def sendCatchSetpoint(scf):
-    global _bx
-    global _by
-    global _bz
-    global ballValid
-
-    if ballValid == True:
-        ballValid = False
-
-    else:
-        sendHoverAtPosition(scf)
-
 if __name__ == '__main__':
 
     rospy.init_node('traj_send', anonymous=True)
-    rospy.Subscriber("/crazyflie/external_position", Point, extPoseCallback,  queue_size=1)
+    rospy.Subscriber("/crazyflie/external_position", Point, extPoseCallback)
     rospy.Subscriber("/crazyflie/waypoint", Point, setPointCallback)
-    rospy.Subscriber("/optitrack/upoints", UnidentifiedPointArray, ballPoseCallback, queue_size=1)
-    pub_v = rospy.Publisher("/ball_vel", Twist, queue_size=1)
+    rospy.Subscriber("/crazyflie/ball_position", Point, ballPoseCallback)
 
     # Initialize the low-level drivers (don't list the debug drivers)
     cflib.crtp.init_drivers(enable_debug_driver=False)
@@ -323,14 +251,9 @@ if __name__ == '__main__':
         firstPos = False
         # Wait for first position to come in
         rate = rospy.Rate(20)
-        connectedToCrazyflie = True
-        readyToTrack = True
-        rospy.loginfo("Waiting for first position")
         while not firstPos:
             rate.sleep()
 
-        rospy.loginfo("Taking off...")
-        # Takeoff
         for x in range(50):
             if x == 0:
                 x = 25
@@ -338,49 +261,52 @@ if __name__ == '__main__':
             sendSetpoint(scf,(0,0,-_ogZ*((50-x)/50.0)))
             time.sleep(0.1)
 
-        rospy.loginfo("Hovering...")
-        # Hover and let dynamics settle
-        for x in range(20):
-            sendHover(scf)
-            time.sleep(0.1)
-
-        readyToTrack = True
-
-        # Start sending trajectory
-        rospy.loginfo("Sending trajectory...")
-        vel_msg = Twist()
-        while not rospy.is_shutdown():
-            vel_msg.linear.x = _bx
-            vel_msg.linear.y = _by
-            vel_msg.linear.z = _bz
-            pub_v.publish(vel_msg)
-            if ballValid == False:
-                sendHover(scf)
-
-            rate.sleep()
-
-        # Hover and let ball and dynamics settle
         for x in range(50):
             sendHover(scf)
             time.sleep(0.1)
 
-        # Land
+        rospy.loginfo("Sending trajectory...")
+        t = 0.0
+        for x in range(1000):
+            sendSetpoint(scf,(0,math.sin(freq*t),0))
+            t = t + 0.01
+            time.sleep(0.01)
+
+        # for waypoint in sequence:
+        #     sendSetpoint(scf,waypoint)
+        #     time.sleep(waypoint[3])
+
+        # for x in range(150):
+        #     sendSetpoint(scf,(0,math.sin(freq*t - 1.570795),0))
+        #     t = t + 0.01
+        #     time.sleep(0.01)
+        #
+        # for x in range(150):
+        #     sendSetpoint(scf,(0,math.sin(freq*t),0))
+        #     t = t + 0.01
+        #     time.sleep(0.01)
+        #
+        # for x in range(150):
+        #     sendSetpoint(scf,(0,math.sin(freq*t - 1.570795),0))
+        #     t = t + 0.01
+        #     time.sleep(0.01)
+        #
+        # for x in range(150):
+        #     sendSetpoint(scf,(0,math.sin(freq*t),0))
+        #     t = t + 0.01
+        #     time.sleep(0.01)
+
+        for x in range(50):
+            sendHover(scf)
+            time.sleep(0.1)
+
+        # rospy.loginfo("Recieving optitrack data, sending setpoint")
+        # while not rospy.is_shutdown():
+        #     sendSetpoint(scf,(0,0,0))
+        #     rate.sleep()
+
         for x in range(50):
             sendSetpoint(scf,(0,0,-_ogZ*(x/50.0)))
             time.sleep(0.1)
 
         scf.cf.commander.send_stop_setpoint()
-    # connectedToCrazyflie = True
-    # readyToTrack = True
-    # rate = rospy.Rate(20)
-    # message = Twist()
-    # while not rospy.is_shutdown():
-    #     message.linear.x = tx
-    #     message.linear.y = ty
-    #     message.linear.z = tz
-    #     message.angular.x = vx
-    #     message.angular.y = rawVx
-    #     message.angular.z = vz
-    #
-    #     pub_v.publish(message)
-    #     rate.sleep()

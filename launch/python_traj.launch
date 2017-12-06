@@ -11,6 +11,8 @@
     <node name="traj_control" pkg="trajectory_publisher" type="traj_send.py" output="screen"/>
   </group>
 
+  <node pkg="state_publisher" type="state_publisher" name="states" output="screen"/>
+
   <!-- run optitrack bridge -->
   <include file="$(find optitrack)/launch/optitrack_pipeline.launch">
     <arg name="iface" value="192.168.1.7"/>
