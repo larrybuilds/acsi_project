@@ -356,7 +356,6 @@ if __name__ == '__main__':
             pub_v.publish(vel_msg)
             if ballValid == False:
                 sendHover(scf)
-
             rate.sleep()
 
         # Hover and let ball and dynamics settle

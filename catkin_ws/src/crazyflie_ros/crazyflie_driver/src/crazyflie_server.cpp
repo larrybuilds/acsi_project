@@ -15,6 +15,7 @@
 #include "sensor_msgs/Temperature.h"
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Float32.h"
+#include "std_msgs/UInt8.h"
 #include "crazyflie_driver/TorqueThrustStamped.h"
 #include "crazyflie_driver/HoverStamped.h"
 
@@ -86,10 +87,12 @@ public:
     ros::NodeHandle n;
 
     m_subscribeCmdVel = n.subscribe(tf_prefix + "/cmd_vel", 1, &CrazyflieROS::cmdVelChanged, this);
+    m_subscribeWaypoint = n.subscribe(tf_prefix + "/cmd_waypoint",1, &CrazyflieROS::cmdWaypointChanged, this);
     m_subscribeExternalPosition = n.subscribe(tf_prefix + "/external_position", 1, &CrazyflieROS::positionMeasurementChanged, this);
     m_serviceEmergency = n.advertiseService(tf_prefix + "/emergency", &CrazyflieROS::emergency, this);
     m_subscribeCmdThrustTorque = n.subscribe(tf_prefix + "/cmd_thrust_torque", 1, &CrazyflieROS::cmdThrustTorqueChanged, this);
     m_subscribeCmdHover = n.subscribe(tf_prefix+"/cmd_hover", 1, &CrazyflieROS::cmdHoverChange, this);
+    m_sendReady = n.advertise<std_msgs::UInt8>(tf_prefix + "/ready",1);
 
     if (m_enable_logging_imu) {
       m_pubImu = n.advertise<sensor_msgs::Imu>(tf_prefix + "/imu", 10);
@@ -271,6 +274,12 @@ private:
     }
   }
 
+  void cmdWaypointChanged( const geometry_msgs::PointStamped::ConstPtr& msg) {
+    //   ROS_INFO("Sending setpoint X(%f) Y(%f) Z(%d)", msg->point.x, msg->point.y, (uint16_t)(msg->point.z*1000.0));
+      m_cf.sendSetpoint(msg->point.y, -msg->point.x, 0, (uint16_t)(msg->point.z*1000.0));
+      m_sentSetpoint = true;
+  }
+
   void cmdThrustTorqueChanged(
       const crazyflie_driver::TorqueThrustStamped::ConstPtr& msg)
   {
@@ -421,6 +430,9 @@ private:
        m_cf.sendSetpoint(0, 0, 0, 0);
     }
 
+    std_msgs::UInt8 readymsg;
+    m_sendReady.publish(readymsg);
+
     while(!m_isEmergency) {
       // make sure we ping often enough to stream data out
       //ROS_INFO("log: %s  setpoint: %s   ext: %s", m_enableLogging ? "true" : "false",m_sentSetpoint ? "true" : "false",m_sentExternalPosition ? "true" : "false");
@@ -564,10 +576,12 @@ private:
   ros::ServiceServer m_serviceEmergency;
   ros::ServiceServer m_serviceUpdateParams;
   ros::Subscriber m_subscribeCmdVel;
+  ros::Subscriber m_subscribeWaypoint;
   ros::Subscriber m_subscribeExternalPosition;
   ros::Subscriber m_subscribeCmdThrustTorque;
   ros::Subscriber m_subscribeCmdHover;
 
+  ros::Publisher m_sendReady;
   ros::Publisher m_pubImu;
   ros::Publisher m_pubTemp;
   ros::Publisher m_pubMag;

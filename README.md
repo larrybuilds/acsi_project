@@ -69,6 +69,6 @@ Select the the rigid body and navigate to ```View -> Rigid Body Properties```. I
 
 Run
 ```
-roslaunch launch/python_traj.launch
+roslaunch launch/trajectory_tracker.launch
 ```
 This will call the python script that will configure the onboard EKF and take in the optitrack data and command a hover setpoint 0.5m above the quad's current position.

@@ -3,24 +3,15 @@
   <arg name="uri"     default="radio://0/80/2M" />
   <arg name="frame"   default="rigid_body_1" />
 
-  <arg name="amp"     default="1"/>
-  <arg name="freq"    default="0.1"/>
-  <arg name="x_start" default="-0.5"/>
-  <arg name="y_start" default="-0.5"/>
-  <arg name="z_hover" default="1.2"/>
-
-  <!-- Load in LQR gains -->
-  <rosparam command="load" file="$(find trajectory_publisher)/params/lqr.yaml"/>
-
   <!-- Launch crazyflie server -->
-  <!-- <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch"/> -->
+  <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch"/>
 
   <!-- Launch keyboard node -->
-  <node pkg="keyboard" type="keyboard" name="keyboard" output="screen"/>
+  <!-- <node pkg="keyboard" type="keyboard" name="keyboard" output="screen"/> -->
 
   <group ns="crazyflie">
-    <!-- Add target crazyflie to server -->
-    <!-- <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
+    <!--- Add target crazyflie to server -->
+    <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
       <arg name="uri"            value="$(arg uri)" />
       <arg name="tf_prefix"      value="crazyflie" />
       <arg name="enable_logging" value="False" />
@@ -30,38 +21,24 @@
       <arg name="enable_logging_pressure" value="False" />
       <arg name="enable_logging_battery" value="False" />
       <arg name="enable_logging_packets" value="False" />
-    </include> -->
+    </include>
 
     <!-- Start controller state interpreter -->
-    <!-- <node name="key_control" pkg="trajectory_publisher" type="keyboard_control.py" output="screen">
-      <param name="use_crazyflie_controller" value="True" />
+    <node name="key_control" pkg="trajectory_publisher" type="keyboard_control.py" output="screen">
+      <param name="use_crazyflie_controller" value="False" />
       <param name="key_topic" value="/keyboard/keydown"/>
-    </node> -->
-
-    <!-- Launch LQR controller -->
-    <!-- <node pkg="trajectory_publisher" type="lqr_controller" name="lqr" output="screen">
-        <param name="worldFrame" value="world"/>
-        <param name="frmae"      value="$(arg frame)"/>
-    </node> -->
-
-    <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0 0 0 0 1 $(arg frame) /base_link 100" />
-    <node pkg="tf" type="static_transform_publisher" name="world_odom_broad" args="0 0 0 0 0 0 1 world odom 10"/>
+    </node>
 
     <node pkg="state_publisher" type="state_publisher" name="pose_pub" output="screen">
         <param name="rigid_id" value="1"/>
     </node>
   </group>
 
-  <!-- Launch EKF -->
- <!-- <include file="$(find robot_localization)/launch/crazyflie_optitrack.launch"/> -->
+  <node pkg="trajectory_publisher" type="trajectory_publisher" name="trajectory_publisher" output="screen"/>
 
   <!-- run optitrack bridge -->
   <include file="$(find optitrack)/launch/optitrack_pipeline.launch">
     <arg name="iface" value="192.168.1.7"/>
   </include>
-
-  <!-- run rviz -->
-  <!-- <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie.urdf.xacro" /> -->
-  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find crazyflie_demo)/launch/crazyflie_pos.rviz" required="true" /> -->
 
 </launch>

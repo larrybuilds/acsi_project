@@ -11,7 +11,8 @@
     **************************************************************************/
 
 #include "ros/ros.h"
-#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
+#include <std_msgs/UInt8.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -19,72 +20,103 @@
 #include <string>
 #include <inttypes.h>
 
+volatile bool recievingPosition;
+volatile bool extPosReady;
+volatile bool crazyflieReady;
+volatile double xS;
+volatile double yS;
+volatile double zS;
+volatile double xD;
+volatile double yD;
+volatile double zD;
+
+void positionCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
+    if( !recievingPosition ) {
+        recievingPosition = true;
+        xS = msg->point.x;
+        yS = msg->point.y;
+        zS = msg->point.z;
+    }
+}
+
+void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
+    xD = msg->point.x;
+    yD = msg->point.y;
+    //zD = msg->point.z;
+}
+
+void readyCallback(const std_msgs::UInt8::ConstPtr& msg) {
+    crazyflieReady = true;
+}
+
+void extPosReadyCallback(const std_msgs::UInt8::ConstPtr& msg) {
+    extPosReady = true;
+}
+
 int main(int argc, char **argv){
-  ros::init(argc, argv, "trajectory_publisher");
-  ros::NodeHandle n;
-  ros::NodeHandle n_private("~");
+    ros::init(argc, argv, "trajectory_publisher");
+    ros::NodeHandle n;
+    ros::NodeHandle n_private("~");
 
-  // Variable definitions
-  float amp, freq, x_off, y_off, z_off;
-  uint32_t sec, nsec;
+    ros::Subscriber quad_sub = n.subscribe<geometry_msgs::PointStamped>("/crazyflie/external_position",1,positionCallback);
+    ros::Subscriber ball_sub = n.subscribe<geometry_msgs::PointStamped>("/ball/position",1,ballCallback);
+    ros::Publisher  waypoint_pub = n.advertise<geometry_msgs::PointStamped>("/crazyflie/cmd_waypoint",1);
+    ros::Subscriber ready_sub = n.subscribe<std_msgs::UInt8>("/crazyflie/ready",1,readyCallback);
+    ros::Subscriber ext_ready = n.subscribe<std_msgs::UInt8>("/external_position/ready",1,extPosReadyCallback);
+    geometry_msgs::PointStamped waypoint_msg;
+    ros::Rate slow_loop(10);
+    ros::Rate fast_loop(200);
 
-  // Pull parameters from server
-  n_private.param<float>("amplitude",  amp,   1);
-  n_private.param<float>("frequency",  freq,  1);
-  n_private.param<float>("x_offset",   x_off, 1);
-  n_private.param<float>("y_offset",   y_off, 1);
-  n_private.param<float>("z_offset",   z_off, 1);
+    crazyflieReady = false;
 
-  // Define waypoint publisher
-  ros::Publisher pose_pub = n.advertise<geometry_msgs::PoseStamped>("/crazyflie/goal", 100);
-  // Define current waypoint pose message
-  geometry_msgs::PoseStamped pose_msg;
+    // Wait for the first position to come in
+    ROS_INFO("Waiting for initial position...");
+    while( !recievingPosition ) {
+        ros::spinOnce();
+        slow_loop.sleep();
+    }
 
-  // Initialize message for takeoff sequence
-  pose_msg.pose.position.x = x_off;
-  pose_msg.pose.position.y = y_off;
-  pose_msg.pose.position.z = z_off;
-  pose_msg.pose.orientation.x = 0;
-  pose_msg.pose.orientation.y = 0;
-  pose_msg.pose.orientation.z = 0;
-  pose_msg.pose.orientation.w = 1;
+    ROS_INFO("Waiting for crazyflie...");
+    while( !crazyflieReady ) {
+        ros::spinOnce();
+        slow_loop.sleep();
+    }
 
-  ros::Time startTime;
-  ros::Time t;
-  ros::Duration dt;
+    ROS_INFO("Waiting for external position...");
+    while( !extPosReady ) {
+        ros::spinOnce();
+        slow_loop.sleep();
+    }
 
-  startTime = ros::Time::now();
-  ros::Rate looprate(5);
+    ROS_INFO("Hovering at X(%f) Y(%f) Z(%f)...", xS, yS, zS);
+    // Set the copter to hover
+    for( int i = 0; i < 50; i ++ ) {
+        waypoint_msg.point.x = xS;
+        waypoint_msg.point.y = yS;
+        waypoint_msg.point.z = zS + 0.2*(1.0 - (49.0-(float)i)/49);
+        // ROS_INFO("Commanding Z(%f)",zS + 0.2*(1.0 - (49.0-(float)i)/49));
+        waypoint_pub.publish(waypoint_msg);
+        ros::spinOnce();
+        ros::spinOnce();
+        ros::spinOnce();
+        slow_loop.sleep();
+    }
 
-  // Set the copter to hover for 10s on start
-  while( (ros::Time::now() - startTime) <= ros::Duration(20) ) {
-    pose_msg.header.stamp = ros::Time::now();
-    pose_pub.publish(pose_msg);
-    ros::spinOnce();
-    looprate.sleep();
-  }
+    xD = xS;
+    yD = yS;
+    zD = zS + 0.2;
 
-  startTime = ros::Time::now();
-  // Loop until ros quits
-  while(ros::ok()) {
-    // Grab current time
-    dt = ros::Time::now() - startTime;
+    // Loop until ros quits
+    while(ros::ok()) {
+        // ROS_INFO("Hovering X(%f) Y(%f) Z(%f)...", xD, yD, zD);
+        waypoint_msg.header.stamp = ros::Time::now();
+        waypoint_msg.point.x = xD;
+        waypoint_msg.point.y = yD;
+        waypoint_msg.point.z = zD;
+        waypoint_pub.publish(waypoint_msg);
 
-    // Update trajectory
-    pose_msg.header.stamp = t;
-    pose_msg.pose.position.x = x_off;
-    pose_msg.pose.position.y = y_off  + amp*sin(freq*dt.toSec());
-    pose_msg.pose.position.z = z_off;
-    pose_msg.pose.orientation.x = 0;
-    pose_msg.pose.orientation.y = 0;
-    pose_msg.pose.orientation.z = 0;
-    pose_msg.pose.orientation.w = 1;
-
-    // Publish waypoint
-    pose_pub.publish(pose_msg);
-
-    ros::spinOnce();
-    looprate.sleep();
-  }
+        ros::spinOnce();
+        fast_loop.sleep();
+    }
 
 }
