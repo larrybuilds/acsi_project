@@ -16,6 +16,8 @@
 #include "nav_msgs/Odometry.h"
 #include <tf/transform_listener.h>
 #include <std_msgs/UInt8.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,6 +117,9 @@ int main(int argc, char **argv){
     ros::Subscriber rig_sub  = n.subscribe<optitrack::RigidBodyArray>(rigid_topic,1,rigidBodyCallback);
     ros::Subscriber upt_sub  = n.subscribe<optitrack::UnidentifiedPointArray>(upoint_topic,1,unidentifiedPointCallback);
 
+    // Define transform and its broadcaster
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped transformStamped;
 
     ros::Rate loop_rate(200);
 
@@ -131,8 +136,20 @@ int main(int argc, char **argv){
     while( ros::ok() ) {
 
         if( ballIndex >= 0 ) {
-            ball_msg.header.stamp = ros::Time::now();
 
+            transformStamped.header.stamp = ros::Time::now();
+            transformStamped.header.frame_id = "world";
+            transformStamped.child_frame_id = "ball";
+            // Set relative position to zero
+            transformStamped.transform.translation.x = bx;
+            transformStamped.transform.translation.y = by;
+            transformStamped.transform.translation.z = bz;
+            transformStamped.transform.rotation.w = 1;
+            // Send off transform
+            br.sendTransform(transformStamped);
+
+            ball_msg.header.stamp = ros::Time::now();
+            ball_msg.header.frame_id = "ball";
             ball_msg.point.x = bx;
             ball_msg.point.y = by;
             ball_msg.point.z = bz;

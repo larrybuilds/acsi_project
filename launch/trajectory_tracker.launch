@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="uri"     default="radio://0/80/2M" />
+  <arg name="uri"     default="radio://0/35/2M" />
   <arg name="frame"   default="rigid_body_1" />
 
   <!-- Launch crazyflie server -->
@@ -31,6 +31,7 @@
 
     <node pkg="state_publisher" type="state_publisher" name="pose_pub" output="screen">
         <param name="rigid_id" value="1"/>
+        <param name="ballRelative" value="True"/>
     </node>
   </group>
 

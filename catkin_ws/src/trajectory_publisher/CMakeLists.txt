@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   crazyflie_driver
   cmake_modules
+  tf
 )
 find_package(Eigen REQUIRED)
 
