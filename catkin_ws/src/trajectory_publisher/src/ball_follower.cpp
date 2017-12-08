@@ -23,7 +23,7 @@
 #include <inttypes.h>
 
 // Adjustable set height off from starting position
-#define dz 0.5
+#define dz 0.2
 
 volatile bool recievingPosition;
 volatile bool extPosReady;
@@ -46,7 +46,6 @@ volatile double vx = 0;
 volatile double vy = 0;
 volatile double vz = 0;
 volatile double t = 0;
-volatile double zmax = 0;
 
 ros::Time lstamp;
 ros::Duration dt;
@@ -74,37 +73,25 @@ void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
         vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
         vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
 
-        if( swingingUp ) {
-            // Calculate zmax based on energy in pendulum
-            zmax = (msg->point.z*9.81 + 0.5*vy*vy + 0.5*vz*vz)*0.101936799;
+        // Calculated closed form value of time at which ball will cross the
+        // quadcopter's z plane
+        t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
 
-            if( ~isnan(zmax) && std::isfinite(zmax) ) {
-                ROS_INFO("Zmax(%f)",zmax);
-                if( zmax > (zD + 0.0254) ) {
-                    swingingUp = false;
-                }
-            }
-        } else {
-            // Calculated closed form value of time at which ball will cross the
-            // quadcopter's z plane
-            t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
+        if ( ~isnan(t) && std::isfinite(t) ) {
+            // Solve for the x,y position at the time of impact
+            double x = msg->point.x + vx*t;
+            double y = msg->point.y + vy*t;
 
-            if ( ~isnan(t) && std::isfinite(t) ) {
-                // Solve for the x,y position at the time of impact
-                double x = msg->point.x + vx*t;
-                double y = msg->point.y + vy*t;
-
-                if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
-                    xD = x;
-                    yD = y;
-                }
+            if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
+                xD = x;
+                yD = y;
             }
         }
-        //
-        // if( msg->point.z >= zD+0.0254 ) {
-        //     ROS_INFO("Z(%f)",msg->point.z);
-        //     swingingUp = false;
-        // }
+
+        if( msg->point.z >= zD+0.0254 ) {
+            ROS_INFO("Z(%f)",msg->point.z);
+            swingingUp = false;
+        }
 
         // Update last point for next iteration
         lbx = msg->point.x;
@@ -128,7 +115,7 @@ void extPosReadyCallback(const std_msgs::UInt8::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
-    ros::init(argc, argv, "trajectory_publisher");
+    ros::init(argc, argv, "ball_follower");
     ros::NodeHandle n;
     ros::NodeHandle n_private("~");
 
@@ -184,13 +171,6 @@ int main(int argc, char **argv){
         slow_loop.sleep();
     }
 
-    // Hover at desired point for 3 seconds to allow settling of ball movement
-    for( int i = 0; i < 30; i ++ ) {
-        waypoint_pub.publish(waypoint_msg);
-        ros::spinOnce();
-        slow_loop.sleep();
-    }
-
     lstamp = ros::Time::now();
     // Allow the ball setpoint tracker to run
     acceptBallSetpoint = true;
@@ -208,48 +188,32 @@ int main(int argc, char **argv){
     // Loop until ros quits
     while(ros::ok()) {
 
-        // Update current time
-        ct = ros::Time::now() - startTime;
-
-        // Run sinusoidal swingup at pendulum natrual freqency
-        if( swingingUp ) {
-            ct = ros::Time::now() - startTime;
-            // Fill in the desired setpont with the original x and z, sinusoidal reference in y
-            waypoint_msg.header.stamp = ros::Time::now();
-            waypoint_msg.point.x = xS;
-            //waypoint_msg.point.y = yS + sin(8.087026648*ct.toSec());      // 18cm
-            //waypoint_msg.point.y = yS + 0.5*sin(5.718391382*ct.toSec());  // 30cm
-            waypoint_msg.point.y = yS + 0.5*sin(5.919097422*ct.toSec());    // 28cm
-            waypoint_msg.point.z = zD;
-
-        } else {
-            // Track trajectory from forward balistic model
-            waypoint_msg.header.stamp = ros::Time::now();
-            waypoint_msg.point.x = xD;
-            waypoint_msg.point.y = yD;
-            // Dip in z to aid in catching
-            waypoint_msg.point.z = zD-0.15;
-        }
+        // Track trajectory from forward balistic model
+        waypoint_msg.header.stamp = ros::Time::now();
+        waypoint_msg.point.x = xD;
+        waypoint_msg.point.y = yD;
+        // Dip in z to aid in catching
+        waypoint_msg.point.z = zD;
 
         waypoint_pub.publish(waypoint_msg);
 
-        // transformStamped.header.stamp = ros::Time::now();
-        // transformStamped.header.frame_id = "world";
-        // transformStamped.child_frame_id = "target";
-        // // Set relative position to zero
-        // transformStamped.transform.translation.x = xD;
-        // transformStamped.transform.translation.y = yD;
-        // transformStamped.transform.translation.z = zD;
-        // transformStamped.transform.rotation.w = 1;
-        //
-        // // Send off transform
-        // br.sendTransform(transformStamped);
-        //
-        // msg.header.frame_id ="target";
-        // msg.point.x = xD;
-        // msg.point.y = yD;
-        // msg.point.z = zD;
-        // target_pub.publish(msg);
+        transformStamped.header.stamp = ros::Time::now();
+        transformStamped.header.frame_id = "world";
+        transformStamped.child_frame_id = "target";
+        // Set relative position to zero
+        transformStamped.transform.translation.x = xD;
+        transformStamped.transform.translation.y = yD;
+        transformStamped.transform.translation.z = zD;
+        transformStamped.transform.rotation.w = 1;
+
+        // Send off transform
+        br.sendTransform(transformStamped);
+
+        msg.header.frame_id ="target";
+        msg.point.x = xD;
+        msg.point.y = yD;
+        msg.point.z = zD;
+        target_pub.publish(msg);
         ros::spinOnce();
         fast_loop.sleep();
     }

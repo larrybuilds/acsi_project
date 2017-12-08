@@ -75,7 +75,7 @@ void unidentifiedPointCallback(const optitrack::UnidentifiedPointArray::ConstPtr
         } else {
             if( msg->upoints[i].x < 1.5 &&
                 msg->upoints[i].x > -1.0 &&
-                msg->upoints[i].y < 1.8 &&
+                msg->upoints[i].y < 2.5 &&
                 msg->upoints[i].y > 0.0 &&
                 msg->upoints[i].z < 2.0 &&
                 msg->upoints[i].z > -2.0)  {
