@@ -35,7 +35,9 @@
     </node>
   </group>
 
-  <node pkg="trajectory_publisher" type="ball_follower" name="trajectory_publisher" output="screen"/>
+  <node pkg="trajectory_publisher" type="ball_follower" name="trajectory_publisher" output="screen">
+      <param name="forwardPredict" value="True"/>
+  </node>
 
   <!-- run optitrack bridge -->
   <include file="$(find optitrack)/launch/optitrack_pipeline.launch">

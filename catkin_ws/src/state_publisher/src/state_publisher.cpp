@@ -109,7 +109,7 @@ int main(int argc, char **argv){
 
     n_private.param<int>("rigid_id", rbID, 1);
     n_private.param<bool>("ballRelative", ballRelative, false);
-    n_private.param<float>("ball_roi", ball_roi, 0.25);
+    n_private.param<float>("ball_roi", ball_roi, 0.4);
 
     ros::Publisher  ball_pub = n.advertise<geometry_msgs::PointStamped>(ball_topic, 1);
     ros::Publisher  ext_pose = n.advertise<geometry_msgs::PointStamped>("/crazyflie/external_position",1);

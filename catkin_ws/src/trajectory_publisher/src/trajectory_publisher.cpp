@@ -15,6 +15,7 @@
 #include <std_msgs/UInt8.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <std_msgs/Float32.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@
 #include <inttypes.h>
 
 // Adjustable set height off from starting position
-#define dz 0.5
+#define dz 0.4
 
 volatile bool recievingPosition;
 volatile bool extPosReady;
@@ -49,6 +50,7 @@ volatile double t = 0;
 volatile double zmax = 0;
 
 ros::Time lstamp;
+ros::Time lastPredictTime;
 ros::Duration dt;
 double alpha = 0.5;
 bool acceptBallSetpoint = false;
@@ -65,46 +67,47 @@ void positionCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 
     if (acceptBallSetpoint) {
-        // Updtate time increment
-        dt = msg->header.stamp - lstamp;
-        lstamp = msg->header.stamp;
+        if( ros::Time::now() - lastPredictTime < ros::Duration(1) ) {
+            // Updtate time increment
+            dt = msg->header.stamp - lstamp;
+            lstamp = msg->header.stamp;
 
-        // Apply exponentially moving average filter to velocity approximations
-        vx = alpha*( msg->point.x - lbx )/dt.toSec() + (1-alpha)*vx;
-        vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
-        vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
+            // Apply exponentially moving average filter to velocity approximations
+            vx = alpha*( msg->point.x - lbx )/dt.toSec() + (1-alpha)*vx;
+            vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
+            vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
 
-        if( swingingUp ) {
-            // Calculate zmax based on energy in pendulum
-            zmax = (msg->point.z*9.81 + 0.5*vy*vy + 0.5*vz*vz)*0.101936799;
+            if( swingingUp ) {
+                // Calculate zmax based on energy in pendulum
+                zmax = (msg->point.z*9.81 + 0.5*vy*vy + 0.5*vz*vz)*0.101936799;
 
-            if( ~isnan(zmax) && std::isfinite(zmax) ) {
-                ROS_INFO("Zmax(%f)",zmax);
-                if( zmax > (zD + 0.0254) ) {
-                    swingingUp = false;
+                if( ~isnan(zmax) && std::isfinite(zmax) ) {
+                    if( zmax > (zD + 0.05) && vz > 0 ) {
+                        ROS_INFO("Zmax(%f) Zball(%f) ZD(%f) VZ(%f)",zmax,msg->point.x,zD,vz);
+                        swingingUp = false;
+                    }
+                }
+            } else {
+                // Calculated closed form value of time at which ball will cross the
+                // quadcopter's z plane
+                t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
+
+                if ( ~isnan(t) && std::isfinite(t) ) {
+                    // Solve for the x,y position at the time of impact
+                    double x = msg->point.x + vx*t;
+                    double y = msg->point.y + vy*t;
+
+                    if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
+                        xD = x;
+                        yD = y;
+                    }
                 }
             }
+            lastPredictTime = ros::Time::now();
         } else {
-            // Calculated closed form value of time at which ball will cross the
-            // quadcopter's z plane
-            t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
-
-            if ( ~isnan(t) && std::isfinite(t) ) {
-                // Solve for the x,y position at the time of impact
-                double x = msg->point.x + vx*t;
-                double y = msg->point.y + vy*t;
-
-                if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
-                    xD = x;
-                    yD = y;
-                }
-            }
+            lstamp = msg->header.stamp;
+            lastPredictTime = ros::Time::now();
         }
-        //
-        // if( msg->point.z >= zD+0.0254 ) {
-        //     ROS_INFO("Z(%f)",msg->point.z);
-        //     swingingUp = false;
-        // }
 
         // Update last point for next iteration
         lbx = msg->point.x;
@@ -138,8 +141,11 @@ int main(int argc, char **argv){
     ros::Publisher  target_pub = n.advertise<geometry_msgs::PointStamped>("/target_pos",1);
     ros::Subscriber ready_sub = n.subscribe<std_msgs::UInt8>("/crazyflie/ready",1,readyCallback);
     ros::Subscriber ext_ready = n.subscribe<std_msgs::UInt8>("/external_position/ready",1,extPosReadyCallback);
+    ros::Publisher xyKp_pub = n.advertise<std_msgs::Float32>("/crazyflie/xyKp",1);
+
+    std_msgs::Float32 xyKp_msg;
     geometry_msgs::PointStamped waypoint_msg;
-    ros::Rate slow_loop(5);
+    ros::Rate slow_loop(10);
     ros::Rate fast_loop(200);
 
     lstamp = ros::Time::now();
@@ -184,14 +190,18 @@ int main(int argc, char **argv){
         slow_loop.sleep();
     }
 
+    xyKp_msg.data = 4.0;
+    xyKp_pub.publish(xyKp_msg);
+
     // Hover at desired point for 3 seconds to allow settling of ball movement
-    for( int i = 0; i < 30; i ++ ) {
+    for( int i = 0; i < 15; i ++ ) {
         waypoint_pub.publish(waypoint_msg);
         ros::spinOnce();
         slow_loop.sleep();
     }
 
     lstamp = ros::Time::now();
+    lastPredictTime = ros::Time::now();
     // Allow the ball setpoint tracker to run
     acceptBallSetpoint = true;
     // Set inital desired position (x and y updated async in ballCallback)

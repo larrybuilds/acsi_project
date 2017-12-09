@@ -15,6 +15,7 @@
 #include <std_msgs/UInt8.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Point.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -48,9 +49,11 @@ volatile double vz = 0;
 volatile double t = 0;
 
 ros::Time lstamp;
+ros::Time lastPredictTime;
 ros::Duration dt;
 double alpha = 0.5;
 bool acceptBallSetpoint = false;
+bool forwardPredict = true;
 
 void positionCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
     if( !recievingPosition ) {
@@ -64,33 +67,40 @@ void positionCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 
     if (acceptBallSetpoint) {
-        // Updtate time increment
-        dt = msg->header.stamp - lstamp;
-        lstamp = msg->header.stamp;
 
-        // Apply exponentially moving average filter to velocity approximations
-        vx = alpha*( msg->point.x - lbx )/dt.toSec() + (1-alpha)*vx;
-        vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
-        vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
+        if( forwardPredict ) {
+            if( ros::Time::now() - lastPredictTime < ros::Duration(1) ) {
+                // Updtate time increment
+                dt = msg->header.stamp - lstamp;
+                lstamp = msg->header.stamp;
 
-        // Calculated closed form value of time at which ball will cross the
-        // quadcopter's z plane
-        t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
+                // Apply exponentially moving average filter to velocity approximations
+                vx = alpha*( msg->point.x - lbx )/dt.toSec() + (1-alpha)*vx;
+                vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
+                vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
 
-        if ( ~isnan(t) && std::isfinite(t) ) {
-            // Solve for the x,y position at the time of impact
-            double x = msg->point.x + vx*t;
-            double y = msg->point.y + vy*t;
+                // Calculated closed form value of time at which ball will cross the
+                // quadcopter's z plane
+                t = 0.102*(vz + sqrt( vz*vz + 19.62*msg->point.z - 19.62*zD));
 
-            if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
-                xD = x;
-                yD = y;
+                if ( ~isnan(t) && std::isfinite(t) ) {
+                    // Solve for the x,y position at the time of impact
+                    double x = msg->point.x + vx*t;
+                    double y = msg->point.y + vy*t;
+
+                    if( x < 2 && x > -2 && y < 1.5 && y > -1 ) {
+                        xD = x;
+                        yD = y;
+                    }
+                }
+                lastPredictTime = ros::Time::now();
+            } else {
+                lstamp = msg->header.stamp;
+                lastPredictTime = ros::Time::now();
             }
-        }
-
-        if( msg->point.z >= zD+0.0254 ) {
-            ROS_INFO("Z(%f)",msg->point.z);
-            swingingUp = false;
+        } else {
+            xD = msg->point.x;
+            yD = msg->point.y;
         }
 
         // Update last point for next iteration
@@ -129,8 +139,10 @@ int main(int argc, char **argv){
     ros::Rate slow_loop(5);
     ros::Rate fast_loop(200);
 
-    lstamp = ros::Time::now();
+    n_private.param<bool>("forwardPredict", forwardPredict, false);
 
+    lstamp = ros::Time::now();
+    lastPredictTime = ros::Time::now();
     crazyflieReady = false;
 
     // Wait for the first position to come in
@@ -210,6 +222,7 @@ int main(int argc, char **argv){
         br.sendTransform(transformStamped);
 
         msg.header.frame_id ="target";
+        msg.header.stamp = ros::Time::now();
         msg.point.x = xD;
         msg.point.y = yD;
         msg.point.z = zD;
