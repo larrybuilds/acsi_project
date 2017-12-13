@@ -12,6 +12,8 @@ class Controller():
         rospy.loginfo("found update_params service")
         self._update_params = rospy.ServiceProxy('update_params', UpdateParams)
 
+        use_controller = rospy.get_param('~use_crazyflie_controller',False);
+
         rospy.Subscriber("/crazyflie/xyKd", Float32, self.xyKdCallback,  queue_size=1)
         rospy.Subscriber("/crazyflie/xyKi", Float32, self.xyKiCallback,  queue_size=1)
         rospy.Subscriber("/crazyflie/xyKp", Float32, self.xyKpCallback,  queue_size=1)
@@ -45,23 +47,21 @@ class Controller():
         rospy.set_param("flightmode/posSet", 1)
         self._update_params(["flightmode/posSet"])
 
-
-
-        rospy.loginfo("waiting for emergency service")
-        rospy.wait_for_service('emergency')
-        rospy.loginfo("found emergency service")
-        self._emergency = rospy.ServiceProxy('emergency', Empty)
+        # rospy.loginfo("waiting for emergency service")
+        # rospy.wait_for_service('emergency')
+        # rospy.loginfo("found emergency service")
+        # self._emergency = rospy.ServiceProxy('emergency', Empty)
 
         if use_controller:
-            rospy.loginfo("waiting for land service")
-            rospy.wait_for_service('land')
-            rospy.loginfo("found land service")
-            self._land = rospy.ServiceProxy('land', Empty)
+            rospy.loginfo("waiting for halt service")
+            rospy.wait_for_service('halt')
+            rospy.loginfo("found halt service")
+            self._halt = rospy.ServiceProxy('halt', Empty)
 
-            rospy.loginfo("waiting for takeoff service")
-            rospy.wait_for_service('takeoff')
-            rospy.loginfo("found takeoff service")
-            self._takeoff = rospy.ServiceProxy('takeoff', Empty)
+            rospy.loginfo("waiting for resume service")
+            rospy.wait_for_service('resume')
+            rospy.loginfo("found resume service")
+            self._resume = rospy.ServiceProxy('resume', Empty)
         else:
             self._land = None
             self._takeoff = None
@@ -72,18 +72,25 @@ class Controller():
         rospy.Subscriber(key_topic, Key, self._keyChanged)
 
     def _keyChanged(self, data):
-	if self._code != data.code:
-		# Space bar means emergency requested
-		if data.code == 32:
-			self._emergency()
-		# l key means land requested
-		if data.code == 108:
-			self._land()
-		# t key means takeoff requested
-		if data.code == 116:
-			self._takeoff()
+        if self._code != data.code:
+    		# # Space bar means emergency requested
+    		# if data.code == 32:
+    		# 	self._emergency()
+            # Space
+            if data.code == 32:
+                self._halt()
 
-        self._code = data.code
+            # Enter
+            if data.code == 13:
+                self._resume()
+    		# l key means land requested
+    		if data.code == 108:
+    			self._land()
+    		# t key means takeoff requested
+    		if data.code == 116:
+    			self._takeoff()
+
+            self._code = data.code
 
     def xyKdCallback(self,msg):
         rospy.set_param("posCtlPid/xKd", msg.data)

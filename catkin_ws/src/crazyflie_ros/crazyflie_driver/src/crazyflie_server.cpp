@@ -290,7 +290,6 @@ private:
   void cmdHoverChange(
       const crazyflie_driver::HoverStamped::ConstPtr& msg)
   {
-      ROS_INFO("Sending hover setpoint");
       m_cf.sendHoverGenericSetpoint(5,msg->vx,msg->vy,msg->yawrate,msg->zDistance);
       m_sentSetpoint = true;
   }

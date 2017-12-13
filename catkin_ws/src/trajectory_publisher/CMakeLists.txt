@@ -32,6 +32,7 @@ include_directories(
 add_executable(trajectory_publisher src/trajectory_publisher.cpp)
 add_executable(lqr_controller src/lqr_controller.cpp)
 add_executable(ball_follower src/ball_follower.cpp)
+add_executable(dynamic_swingup src/dynamic_swingup.cpp)
 
 target_link_libraries(
   trajectory_publisher
@@ -45,5 +46,10 @@ target_link_libraries(
 
 target_link_libraries(
     lqr_controller
+    ${catkin_LIBRARIES}
+)
+
+target_link_libraries(
+    dynamic_swingup
     ${catkin_LIBRARIES}
 )

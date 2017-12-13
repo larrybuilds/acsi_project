@@ -67,7 +67,6 @@ void positionCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 
     if (acceptBallSetpoint) {
-
         if( forwardPredict ) {
             if( ros::Time::now() - lastPredictTime < ros::Duration(1) ) {
                 // Updtate time increment
