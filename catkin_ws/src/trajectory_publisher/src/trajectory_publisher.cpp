@@ -27,8 +27,8 @@
 
 // Adjustable set height off from starting position
 #define dz 0.5
-#define PEN_LEN 0.35
-#define FREQ 4.5 //sqrt(9.81/PEN_LEN)
+#define PEN_LEN 0.3
+#define FREQ 4.7 //sqrt(9.81/PEN_LEN)
 #define VEL_THRESH 3.0
 
 volatile bool recievingPosition;
@@ -111,12 +111,12 @@ void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
                         ROS_INFO("Zmax(%f) Zball(%f) QZ(%f) VZ(%f) dt(%f)",zmax-qz,msg->point.z,qz,vz,dt.toSec());
 
                         if( ~isnan(zmax) && std::isfinite(zmax) ) {
-                            if( zmax > qz+zThreshold && vz > 0 && msg->point.z < (qz-0.27) ) {
+                            if( zmax > qz+zThreshold ) {
                                 thisIsTheMoney = true;
                             }
                         }
 
-                        if( thisIsTheMoney && msg->point.z > (qz - 0.27) && msg->point.z < (qz - 0.1) ) {
+                        if( thisIsTheMoney && msg->point.z > (qz - 0.215) && msg->point.z < (qz - 0.165) && vz > 0) {
                             swingingUp = false;
                             lastPredictTime = ros::Time::now() - ros::Duration(5);
                             vx = 0;
@@ -297,7 +297,7 @@ int main(int argc, char **argv){
             transformStamped.header.stamp = ros::Time::now();
             transformStamped.transform.translation.x = qx;
             transformStamped.transform.translation.y = qy + sqrt(PEN_LEN*PEN_LEN - (qz-zmax)*(qz-zmax));
-            transformStamped.transform.translation.z = qz + zmax;
+            transformStamped.transform.translation.z = zmax;
             transformStamped.transform.rotation.w = 1;
             // Update target point message
             msg.point.x = qx;
@@ -310,13 +310,13 @@ int main(int argc, char **argv){
             waypoint_msg.point.x = xD;
             waypoint_msg.point.y = yD;
             // Dip in z to aid in catching
-            waypoint_msg.point.z = zD-0.3;
+            waypoint_msg.point.z = zD-0.15;
 
             // Update target transform
             transformStamped.header.stamp = ros::Time::now();
             transformStamped.transform.translation.x = xD;
             transformStamped.transform.translation.y = yD;
-            transformStamped.transform.translation.z = zD-0.3;
+            transformStamped.transform.translation.z = zD-0.15;
             transformStamped.transform.rotation.w = 1;
             // Update target point message
             msg.point.x = xD;
