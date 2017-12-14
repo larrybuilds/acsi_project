@@ -51,7 +51,7 @@ volatile double t = 0;
 ros::Time lstamp;
 ros::Time lastPredictTime;
 ros::Duration dt;
-double alpha = 0.5;
+double alpha = 0.1;
 bool acceptBallSetpoint = false;
 bool forwardPredict = true;
 
@@ -68,7 +68,7 @@ void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
 
     if (acceptBallSetpoint) {
         if( forwardPredict ) {
-            if( ros::Time::now() - lastPredictTime < ros::Duration(1) ) {
+            if( ros::Time::now() - lastPredictTime < ros::Duration(0.5) ) {
                 // Updtate time increment
                 dt = msg->header.stamp - lstamp;
                 lstamp = msg->header.stamp;
@@ -77,6 +77,12 @@ void ballCallback(const geometry_msgs::PointStamped::ConstPtr& msg) {
                 vx = alpha*( msg->point.x - lbx )/dt.toSec() + (1-alpha)*vx;
                 vy = alpha*( msg->point.y - lby )/dt.toSec() + (1-alpha)*vy;
                 vz = alpha*( msg->point.z - lbz )/dt.toSec() + (1-alpha)*vz;
+
+                // vel_msg.header.stamp = msg->header.stamp;
+                // vel_msg.twist.linear.x = vx;
+                // vel_msg.twist.linear.y = vy;
+                // vel_msg.twist.linear.z = vz;
+                // ball_vel.publish(vel_msg);
 
                 // Calculated closed form value of time at which ball will cross the
                 // quadcopter's z plane
