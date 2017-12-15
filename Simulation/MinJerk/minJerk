@@ -1,0 +1,33 @@
+// NAME: minJerk
+// PURPOSE: Generate a minimum jerk trajectory between current (x,y,z) and final (x,y,z) at time stamps in t
+// INPUT: x0[], xf[], time to get to final location (assumes current t=0), number of points in trajectory, 2D array traj (numPointsx3)
+// OUTPUT: traj[]
+
+#include<cmath>
+
+float** minJerk(double x0[], double xf[], int tf, int numPoints, float **traj) {
+    double t[numPoints];
+    double dt = tf/(double)numPoints;
+
+    //Build t vector
+    for (int i=0; i<numPoints; i++) {
+        t[i] = (double)i*dt;
+    } 
+
+    //For x,y,z
+    for (int i=0; i<3; i++) {
+        //Find Coefficents
+        double a0 = x0[i];
+        double a1 = 0;
+        double a2 = 0;
+        double a3 =-(20*x0[i] - 20*xf[i])/(2*pow(tf,3));
+        double a4 =(30*x0[i] - 30*xf[i])/(2*pow(tf,4));
+        double a5 =-(12*x0[i] - 12*xf[i])/(2*pow(tf,5));
+
+        //Build Trajectory
+        for (int j=0; j<numPoints; j++) {
+            traj[j][i] =  a5*pow(t[j],5) + a4*pow(t[j],4) + a3*pow(t[j],3) + a2*pow(t[j],2) + a1*t[j] + a0;
+        }
+    }
+    return traj;
+}
